@@ -22,8 +22,6 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
-import freestream
-import frzout
 
 """
 Modified to use MUSIC
@@ -278,28 +276,6 @@ def run_events(args, results_folder, checkpoint_ic=None):
     else:
         # just run the checkpointed IC
         initial_conditions = [checkpoint_ic]
-
-    def run_hydro(event_number):
-        """
-        Run the initial condition contained in FreeStreamer object `fs` through
-        osu-hydro on a grid with approximate physical size `event_size` [fm].
-        Return a dict of freeze-out surface data suitable for passing directly
-        to frzout.Surface.
-
-        Initial condition arrays are cropped or padded as necessary.
-
-        If `coarse` is an integer > 1, use only every `coarse`th cell from the
-        initial condition arrays (thus increasing the physical grid step size
-        by a factor of `coarse`).  Ignore the user input `hydro_args` and
-        instead run ideal hydro down to a low temperature.
-
-        `dt_ratio` sets the timestep as a fraction of the spatial step
-        (dt = dt_ratio * dxy).  The SHASTA algorithm requires dt_ratio < 1/2.
-
-        """
-
-        
-        return True
 
 
     def run_single_event(ic, event_number):
