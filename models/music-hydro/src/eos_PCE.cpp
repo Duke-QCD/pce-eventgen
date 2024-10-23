@@ -26,7 +26,7 @@ void EOS_PCE::initialize_eos() {
     
     auto envPath = get_hydro_env_path();
     stringstream slocalpath;
-    slocalpath << "/EOS/PCE";
+    slocalpath << envPath << "/EOS/PCE";
 
     string path = slocalpath.str();
     music_message << "from path " << path;
