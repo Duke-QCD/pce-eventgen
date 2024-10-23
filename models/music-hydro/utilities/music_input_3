@@ -1,0 +1,25 @@
+mode  3 
+echo_level  1 
+number_of_particles_to_include  320 
+particle_spectrum_to_compute  0 
+pseudofreeze  1 
+max_pseudorapidity  5.0 
+pseudo_steps  47 
+phi_steps  40 
+min_pt  0.01 
+max_pt  3.0 
+pt_steps  15 
+Include_deltaf  1 
+Include_deltaf_qmu  0 
+Inlucde_deltaf_bulk  0 
+deltaf_14moments  0 
+dNdy_y_min  -0.5 
+dNdy_y_max  0.5 
+dNdy_eta_min  -5.0 
+dNdy_eta_max  5.0 
+dNdy_nrap  51 
+dNdyptdpt_y_min  -0.5 
+dNdyptdpt_y_max  0.5 
+dNdyptdpt_eta_min  -0.5 
+dNdyptdpt_eta_max  0.5 
+EndOfData

@@ -1,0 +1,150 @@
+
+###################################
+# parameters list
+###################################
+#
+echo_level  8   # control the mount of message output to screen
+mode 2   # MUSIC running mode
+         # 1: Does everything. Evolution. Computation of thermal spectra. 
+         #    Resonance decays. Observables.  
+         #    Only compatible with freeze_out_method=3 and pseudofreeze=1
+         # 2: Evolution only.
+         # 3: Compute all thermal spectra only.
+         # 4: Resonance decays only.
+         # 13: Compute observables from previously-computed thermal spectra
+         # 14: Compute observables from post-decay spectra
+#
+#
+###################################
+# parameters for initial conditions
+###################################
+Initial_profile 92               # type of initial condition 
+                                # 0: for Gubser flow test
+                                # 1: for 1+1D test
+                                # 8: Read in initial profile from a file 
+                                #    (public IP-Glasma)
+                                # 9: Read in initial profile from a file 
+                                #    (from Bjoern's IP-Glasma)
+                                #    (9: full T^\mu\nu; 91: e and u^\mu; 92: e only)
+initialize_with_entropy 1       # 0: with energy density 
+                                # 1: with entropy density
+
+# read in initial conditions from external file
+Initial_Distribution_input_filename trento_initial_condition_in_music_format.txt
+
+s_factor 60                  # normalization factor read in
+
+Eta_plateau_size 30.            # size of the plateau in eta_s
+Eta_fall_off 0.7                # the scale of the fall off of the
+                                # plateau in eta_s direction
+T_init_in_GeV 380              
+T_width_in_fm 3
+
+#######################################
+# parameters for hydrodynamic evolution
+#######################################
+boost_invariant 1               # whether the simulation is boost-invariant
+# grid information
+Initial_time_tau_0 0.6          # starting time of the hydrodynamic
+                                # evolution (fm/c)
+Initial_light_quark_fugacity 0  # initial fugacities 
+Initial_strange_quark_fugacity 0
+
+Light_quark_equilibration_time 5 # equilibration timescales (fm/c)
+Strange_quark_equilibration_time 0
+
+Total_evolution_time_tau 25     # the maximum allowed running
+                                # evolution time (fm/c)
+                                # need to be set to some large number
+Delta_Tau 0.005                 # time step to use in the evolution [fm/c]
+Eta_grid_size 14.0              # spatial rapidity range
+                                # [-Eta_grid_size/2, Eta_grid_size/2 - delta_eta]
+Grid_size_in_eta 1              # number of the grid points in spatial
+                                # rapidity direction
+                                # Must have at least 4 cells per processor.
+                                # Must be an even number.
+                                # One cell is positioned at eta=0,
+                                # half the cells are at negative eta,
+                                # the rest (one fewer) are at positive eta
+X_grid_size_in_fm 50.0          
+                                # transverse plane
+                                # [-X_grid_size_in_fm/2, X_grid_size_in_fm/2]
+Y_grid_size_in_fm 50.0           
+                                # transverse plane
+                                # [-Y_grid_size_in_fm/2, Y_grid_size_in_fm/2]
+
+Grid_size_in_y 500
+Grid_size_in_x 500
+#
+#
+EOS_to_use 18                   # type of the equation of state
+
+Minmod_Theta 1.6
+Runge_Kutta_order 1
+
+# transport coefficients
+Viscosity_Flag_Yes_1_No_0 1     # turn on viscosity in the evolution
+Include_Shear_Visc_Yes_1_No_0 1 # include shear viscous effect
+Shear_to_S_ratio 0.1           # value of \eta/s
+T_dependent_Shear_to_S_ratio 3  # flag to use temperature dep. \eta/s(T)
+eta_over_s_T_kink_in_GeV 0.18
+eta_over_s_low_T_slope_in_GeV -0.5
+eta_over_s_high_T_slope_in_GeV 0.5
+eta_over_s_at_kink 0.12
+
+Include_Bulk_Visc_Yes_1_No_0 1  # include bulk viscous effect
+T_dependent_Bulk_to_S_ratio 2
+bulk_viscosity_normalisation 0.1
+bulk_viscosity_width_in_GeV 0.11
+bulk_viscosity_peak_in_GeV 0.22
+
+Include_second_order_terms 0    # include second order non-linear coupling terms
+Include_Rhob_Yes_1_No_0 0
+turn_on_baryon_diffusion 0
+kappa_coefficient 0.4
+#
+#
+# switches to output evolution information
+output_evolution_data 1         # flag to output evolution history to file
+output_movie_flag 0
+output_evolution_T_cut 0.158
+outputBinaryEvolution 0         # output evolution file in binary format
+output_evolution_every_N_eta 1  # output evolution file every Neta steps
+output_evolution_every_N_y 2    # output evolution file every Ny steps
+output_evolution_every_N_x 2    # output evolution file every Nx steps
+output_evolution_every_N_timesteps 10    # output evolution file every Ntime steps
+#
+#
+###########################################
+# parameters for freeze out and Cooper-Frye
+###########################################
+Do_FreezeOut_Yes_1_No_0 1       # flag to find freeze-out surface
+Do_FreezeOut_lowtemp 1          # flag to include cold corona
+freeze_out_method 4             # method for hyper-surface finder
+                                # 4: Cornelius
+freeze_surface_in_binary 0      # switch to output surface file in binary format
+average_surface_over_this_many_time_steps 10 # the step skipped in the tau
+freeze_Ncell_x_step 1
+freeze_Ncell_eta_step 1
+freeze_eps_flag 0
+N_freeze_out 1
+eps_freeze_max 0.1
+eps_freeze_min 0.1
+use_eps_for_freeze_out 0        # flag to use energy density as criteria to
+                                # find freeze-out surface 
+                                # 0: use temperature, 1: use energy density
+                                
+T_freeze 0.158
+
+particle_spectrum_to_compute 0
+number_of_particles_to_include 201
+max_pseudorapidity 5.
+pseudo_steps 51
+phi_steps 48
+min_pt 0.01
+max_pt 3
+pt_steps 30
+Include_deltaf 0
+
+
+EndOfData
