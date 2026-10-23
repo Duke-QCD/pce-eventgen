@@ -238,7 +238,7 @@ If your shell exposes only `SCRATCH`, use that value for `--raw-root`. When
 and `--output-root` also have the per-project/per-user defaults from step 1.
 `config/users/` is ignored by Git, so profiles stay private to your checkout.
 
-The helper also saves an explicit surface-archive source base in `[repair]
+The helper also saves an explicit surface-archive source base in `[repair]`
 `archive_base` and `HIC_SURFACE_ARCHIVE_BASE`. By default it selects the
 `PSCRATCH`/`SCRATCH` root containing the raw campaign, or the raw root's parent
 outside scratch. This selection happens once when the profile is generated.

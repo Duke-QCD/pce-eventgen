@@ -16,7 +16,7 @@ terms (design, oversample, cache, reap, fingerprint, …) are defined in the
 ## Get the code and data
 
 ```bash
-git clone --recurse-submodules https://github.com/andrewgordeev/music-eventgen.git pce-eventgen
+git clone --recurse-submodules https://github.com/Duke-QCD/pce-eventgen.git pce-eventgen
 ```
 
 TRENTo, MUSIC and iS3D are customized copies stored in this repository; SMASH

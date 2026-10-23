@@ -24,7 +24,7 @@ with sections 2 and 3.
 Clone the repository together with its SMASH submodule:
 
 ```bash
-git clone --recurse-submodules https://github.com/andrewgordeev/music-eventgen.git pce-eventgen
+git clone --recurse-submodules https://github.com/Duke-QCD/pce-eventgen.git pce-eventgen
 cd pce-eventgen
 export REPO="$PWD"
 ```
