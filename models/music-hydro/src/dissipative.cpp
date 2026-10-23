@@ -162,23 +162,29 @@ double Diss::Make_uWSource(double tau, Cell_small *grid_pt, Cell_small *grid_pt_
     double tempf;
     double SW, shear, shear_to_s, T, epsilon, rhob, proper_tau;
     double NS_term;
+    // PCE transport must use the same stage cell as its energy and clock.
+    Cell_small *eta_cell;
 
     auto sigma = Util::UnpackVecToMatrix(sigma_1d);
     auto Wmunu = Util::UnpackVecToMatrix(grid_pt->Wmunu);
 
+    // PCE: choose the chemical clock from the same RK-stage cell as epsilon
+    // and rhob before evaluating transport coefficients through the EOS.
     if (rk_flag == 0) {
         epsilon = grid_pt->epsilon;
         rhob = grid_pt->rhob;
 	proper_tau = grid_pt->proper_tau;
+        eta_cell = grid_pt;
     } else {
         epsilon = grid_pt_prev->epsilon;
         rhob = grid_pt_prev->rhob;
 	proper_tau = grid_pt_prev->proper_tau;
+        eta_cell = grid_pt_prev;
     }
 
     T = eos.get_temperature(epsilon, rhob, proper_tau);
 
-    shear_to_s = transport_coeffs_.get_eta_over_s(T);
+    shear_to_s = transport_coeffs_.get_eta_over_s(T, *eta_cell);
 
     int include_WWterm         = 0;
     //int include_Vorticity_term = 0;
@@ -643,7 +649,7 @@ double Diss::Make_uPiSource(double tau, Cell_small *grid_pt, Cell_small *grid_pt
     } else {
         epsilon = grid_pt_prev->epsilon;
         rhob = grid_pt_prev->rhob;
-	proper_tau = grid_pt->proper_tau;
+	proper_tau = grid_pt_prev->proper_tau;
     }
 
     // defining bulk viscosity coefficient
@@ -769,7 +775,7 @@ double Diss::Make_uqSource(
     } else {
         epsilon = grid_pt_prev->epsilon;
         rhob = grid_pt_prev->rhob;
-	proper_tau = grid_pt->proper_tau;
+	proper_tau = grid_pt_prev->proper_tau;
     }
     double pressure = eos.get_pressure(epsilon, rhob, proper_tau);
     double T        = eos.get_temperature(epsilon, rhob, proper_tau);
@@ -953,6 +959,11 @@ double Diss::Make_uqRHS(double tau, SCGrid &arena, int ix, int iy, int ieta,
 //! this function outputs the T and muB dependence of the baryon diffusion
 //! coefficient, kappa
 void Diss::output_kappa_T_and_muB_dependence() {
+    // WARNING(PCE): this and the following three legacy diagnostic scans fix
+    // proper_tau = 0 and do not specify an evolving PCE composition. For EOS 18
+    // that is not generally an equilibrium slice, and entropy queries use the
+    // separate -1 sentinel. Adjust the clock/entropy prescription before reuse
+    // as PCE transport diagnostics; production transport evolution is separate.
     music_message.info("output kappa_B(T, mu_B) ...");
     std::ofstream of("kappa_B_T_and_muB_dependence.dat");
     // write out the header of the file

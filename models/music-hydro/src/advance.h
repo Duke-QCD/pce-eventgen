@@ -42,6 +42,7 @@ class Advance {
                       int rk_flag, double theta_local, DumuVec &a_local,
                       VelocityShearVec &sigma_local, DmuMuBoverTVec &baryon_diffusion_vector, int ieta, int ix, int iy);
 
+    // PCE fluid-clock advection; the hydrodynamic fields are evolved above.
     void Advection(SCGrid &arena_current, SCGrid &arena_future);
 
     void UpdateTJbRK(const ReconstCell &grid_rk, Cell_small &grid_pt);

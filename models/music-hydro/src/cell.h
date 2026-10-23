@@ -14,6 +14,8 @@ class Cell_small {
     ViscousVec Wmunu;
     double pi_b    = 0.;
 
+    // PCE chemical clock [fm], initialized at tau0 and advanced along the flow.
+    // This is distinct from the global Milne-coordinate evolution time tau.
     double proper_tau = 0;
 };
 

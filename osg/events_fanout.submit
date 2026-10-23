@@ -1,0 +1,76 @@
+# events_fanout.submit — one HTCondor job per staged event slot, over a manifest.
+#
+# BEFORE FIRST USE set the two account-specific values below (osg/README.md,
+# section 4): your approved image location and your OSPool project.
+IMAGE   = osdf:///ospool/YOUR_AP/data/YOUR_AP_USERNAME/heavy-ion-VERSION.sif
+PROJECT = YOUR_OSPOOL_PROJECT
+#
+# WHERE TO RUN: from the directory that CONTAINS the stage/ tree split_design.py
+# wrote (i.e. the parent of ./stage). manifest.txt holds one slot path per line,
+# relative to stage/, e.g.:
+#     my_campaign/design_000/AuAu200/0000
+#     my_campaign/design_000/AuAu200/0001
+
+universe        = container
+container_image = $(IMAGE)
+
+# Resolved relative to THIS submit dir (initialdir does not affect the executable).
+executable      = job.sh
+
+# Per-job working dir = the staged slot. The three inputs are read from it and
+# outbox/ is written back into it — the per-job clean output slot the handoff
+# requires (no two jobs share an output dir). Input/output names below are
+# resolved relative to initialdir.
+initialdir              = stage/$(slot)
+transfer_input_files    = initial.hdf, parameters.dat, music_input
+should_transfer_files   = YES
+when_to_transfer_output = ON_EXIT
+transfer_output_files   = outbox
+
+# Resources. Lowered from the single-event test's 12 GB / 10 GB to the handoff's
+# MEASURED peak (~510 MB RAM, ~2 GB disk). Lower request_memory matches more
+# OSPool slots. Central Au-Au events have the largest surfaces, so if any hold on
+# disk, request_disk is the knob to bump.
+request_cpus    = 1
+request_memory  = 2 GB
+request_disk    = 4 GB
++JobDurationCategory = "Medium"
++ProjectName    = "$(PROJECT)"
+
+# Modestly-thick robustness for fan-out: retry transient OSDF/cache holds and
+# worker evictions — central, high-multiplicity events are the ones evicted, so
+# retries are what keep the pooled sample unbiased; throttle idle so a big queue
+# doesn't flood the negotiator.
+max_retries     = 5
+max_idle        = 400
+
+# Flat log names (no logs/ subdir): under initialdir, output/error are slot-
+# relative, so a "logs/" prefix would need a logs/ dir inside every slot. Flat +
+# Cluster.Process stays collision-free wherever they land; the condor log is one
+# shared file beside the stage/ tree.
+output          = job.$(Cluster).$(Process).out
+error           = job.$(Cluster).$(Process).err
+log             = $ENV(HOME)/osgrun/fanout.log
+
+# Auto-release jobs held by transient transfer failures (code 12), up to a few
+# attempts, after a 2-minute backoff. This self-heals the normal OSPool flakiness
+# that caused the manual holds, so a multi-thousand-job run doesn't need babysitting.
+
+# broaden periodic_release to cover transient INPUT transfer failures (code 13,
+# e.g. transient OSDF director hiccups) as well as output (code 12):
+periodic_release = (HoldReasonCode == 12 || HoldReasonCode == 13) && (NumJobStarts < 5) && ((time() - EnteredCurrentStatus) > 120)
+
+# auto-REMOVE anything still held after exhausting releases (>=5 starts) OR held too
+# long OR using excess CPU (the thread issue — a removed job you can investigate, vs a
+# silent hold): this fires right where periodic_release gives up, so nothing lingers held.
+# auto-remove jobs whose working dir is gone (code 14) — the event already drained
+# and the drain deleted its slot, so the job is redundant and can never run:
+# Scope the whole rule to held jobs. NumJobStarts and HoldReasonCode can remain
+# populated after a retry starts; they must not remove a healthy running attempt.
+periodic_remove = (JobStatus == 5) && ( \
+                  (NumJobStarts >= 5) || \
+                  (HoldReasonCode == 14) || \
+                  (HoldReasonCode == 26) || \
+                  ((time() - EnteredCurrentStatus) > 3600))
+
+queue slot from manifest.txt

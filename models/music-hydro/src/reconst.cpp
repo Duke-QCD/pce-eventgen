@@ -11,7 +11,7 @@
 Reconst::Reconst(const EOS &eosIn, const InitData &DATA_in) :
     eos(eosIn),
     DATA(DATA_in),
-    max_iter(1000),
+    max_iter(10000),
     rel_err(1e-15),
     abs_err(1e-15),
     LARGE(1e20),
@@ -46,7 +46,6 @@ ReconstCell Reconst::ReconstIt_shell(double tau, const TJbVec &tauq_vec,
 //! at the previous time step
 void Reconst::revert_grid(ReconstCell &grid_current,
                           const Cell_small &grid_prev) const {
-  //std::cout << "Reverting!" << std::endl;
     grid_current.e    = grid_prev.epsilon;
     grid_current.rhob = grid_prev.rhob;
     grid_current.u    = grid_prev.u;
@@ -64,7 +63,7 @@ int Reconst::ReconstIt_velocity_Newton(ReconstCell &grid_p, double tau,
     double T00 = q[0];
     double J0  = q[4];
     
-    if ((T00 < abs_err)) {
+    if ((T00 < 1e-6)) {
         // T^{0\mu} is too small, directly set it to
         // e = abs_err, u^\mu = (1, 0, 0, 0)
         return(-2);
@@ -81,6 +80,8 @@ int Reconst::ReconstIt_velocity_Newton(ReconstCell &grid_p, double tau,
     }
 
     double u[4], epsilon, pressure, rhob;
+    // PCE: hold the incoming chemical clock fixed throughout the primitive
+    // solve, so pressure and its derivatives use the same fugacities.
     double proper_tau = grid_pt.proper_tau;
 
     double v_guess = sqrt(1. - 1./(grid_pt.u[0]*grid_pt.u[0] + abs_err));
@@ -88,7 +89,6 @@ int Reconst::ReconstIt_velocity_Newton(ReconstCell &grid_p, double tau,
         v_guess = 0.0;
     }
     double v_solution = 0.0;
-    //int v_status = solve_velocity_Newton(v_guess, T00, M, J0, proper_tau, v_solution);
     int v_status = solve_v_Hybrid(v_guess, T00, M, J0, proper_tau, v_solution);
     if (v_status == 0) {
         return(-1);
@@ -99,10 +99,9 @@ int Reconst::ReconstIt_velocity_Newton(ReconstCell &grid_p, double tau,
     rhob = J0/u[0];
        
     if (v_solution > v_critical) {  // for large velocity, solve u0
-        double u0_guess = u[0]; //1./sqrt(1. - v_solution*v_solution);
+        double u0_guess = u[0];
         double u0_solution = u0_guess;
 
-        //int u0_status = solve_u0_Newton(u0_guess, T00, K00, M, J0, proper_tau, u0_solution);
 	int u0_status = solve_u0_Hybrid(u0_guess, T00, K00, M, J0, proper_tau, u0_solution);
         if (u0_status == 0) {
             return(-1);
@@ -153,6 +152,8 @@ int Reconst::ReconstIt_velocity_Newton(ReconstCell &grid_p, double tau,
        grid_p.u[mu] = u[mu];
     }
 
+    // PCE clock source: d(proper_tau)/d(tau) = 1/u^tau, apportioned over
+    // the RK stages. Advance::Advection then transports the updated clock.
     grid_p.proper_tau = proper_tau + (1./DATA.rk_order)*DATA.delta_tau/grid_p.u[0];
 
     return(1);
@@ -166,6 +167,7 @@ void Reconst::regulate_grid(ReconstCell &grid_cell, double elocal) const {
     grid_cell.u[1] = 0.0;
     grid_cell.u[2] = 0.0;
     grid_cell.u[3] = 0.0;
+    // Keep the existing dilute-cell fallback: reset its PCE clock to tau0.
     grid_cell.proper_tau = DATA.tau0;
 }
 
@@ -331,7 +333,7 @@ int Reconst::solve_u0_Hybrid(const double u0_guess, const double T00,
                              const double proper_tau, double &u0_solution) {
     int u0_status = 1;
     double u0_l = 1.0;
-    double u0_h = 1e5;
+    double u0_h = 1e10;
     if (u0_guess >= 1.0) {
         u0_l = std::max(u0_l, 0.5*u0_guess);
         u0_h = std::min(u0_h, 1.5*u0_guess);

@@ -1,0 +1,220 @@
+{
+  "source_record": "2967353",
+  "source_table": "Table_v32.yaml",
+  "submission_metadata": {
+    "additional_resources": [],
+    "data_file": "Table_v32.yaml",
+    "description": "Charged particle $v_3\\{2, \\left | \\Delta\\eta \\right | > 1.4\\}$ as a function of centrality in OO and Ne$-$Ne collisions at $\\sqrt{s_\\mathrm{NN}}$ = 5.36 TeV.",
+    "keywords": [
+      {
+        "name": "reactions",
+        "values": [
+          "OO",
+          "Ne$-$Ne"
+        ]
+      },
+      {
+        "name": "observables",
+        "values": [
+          "$v_{3}${2}"
+        ]
+      },
+      {
+        "name": "phrases",
+        "values": [
+          "Inclusive",
+          "Centrality Dependence"
+        ]
+      },
+      {
+        "name": "cmenergies",
+        "values": [
+          5360.0
+        ]
+      }
+    ],
+    "location": "Data from Figure 1",
+    "name": "Table v32"
+  },
+  "qualifiers": [
+    {
+      "name": "$p_\\mathrm{T}$",
+      "units": "GeV/c",
+      "value": "0.2-3.0"
+    },
+    {
+      "name": "$\\eta$",
+      "value": "-0.8 - 0.8"
+    },
+    {
+      "name": "RE",
+      "value": "OO"
+    },
+    {
+      "name": "SQRT(S)",
+      "value": "5.36 TeV"
+    }
+  ],
+  "rows": [
+    {
+      "cent_low": 0.0,
+      "cent_high": 1.0,
+      "value": 0.027028,
+      "statistical": 0.000424,
+      "sys_plus": 0.000403,
+      "sys_minus": 0.000403,
+      "total_plus": 0.0005849658109667607,
+      "total_minus": 0.0005849658109667607
+    },
+    {
+      "cent_low": 1.0,
+      "cent_high": 2.0,
+      "value": 0.026856,
+      "statistical": 0.000201,
+      "sys_plus": 0.000406,
+      "sys_minus": 0.000406,
+      "total_plus": 0.00045303090402311406,
+      "total_minus": 0.00045303090402311406
+    },
+    {
+      "cent_low": 2.0,
+      "cent_high": 3.0,
+      "value": 0.02607,
+      "statistical": 0.000309,
+      "sys_plus": 0.000402,
+      "sys_minus": 0.000402,
+      "total_plus": 0.0005070355017156097,
+      "total_minus": 0.0005070355017156097
+    },
+    {
+      "cent_low": 3.0,
+      "cent_high": 4.0,
+      "value": 0.025751,
+      "statistical": 0.000326,
+      "sys_plus": 0.000406,
+      "sys_minus": 0.000406,
+      "total_plus": 0.0005206841653056102,
+      "total_minus": 0.0005206841653056102
+    },
+    {
+      "cent_low": 4.0,
+      "cent_high": 5.0,
+      "value": 0.026228,
+      "statistical": 0.000294,
+      "sys_plus": 0.000425,
+      "sys_minus": 0.000425,
+      "total_plus": 0.0005167794500558241,
+      "total_minus": 0.0005167794500558241
+    },
+    {
+      "cent_low": 5.0,
+      "cent_high": 10.0,
+      "value": 0.024759,
+      "statistical": 0.000145,
+      "sys_plus": 0.000442,
+      "sys_minus": 0.000442,
+      "total_plus": 0.0004651763106608074,
+      "total_minus": 0.0004651763106608074
+    },
+    {
+      "cent_low": 10.0,
+      "cent_high": 15.0,
+      "value": 0.023648,
+      "statistical": 0.000199,
+      "sys_plus": 0.000508,
+      "sys_minus": 0.000508,
+      "total_plus": 0.0005455868400172423,
+      "total_minus": 0.0005455868400172423
+    },
+    {
+      "cent_low": 15.0,
+      "cent_high": 20.0,
+      "value": 0.023214,
+      "statistical": 0.000194,
+      "sys_plus": 0.000599,
+      "sys_minus": 0.000599,
+      "total_plus": 0.0006296324324556352,
+      "total_minus": 0.0006296324324556352
+    },
+    {
+      "cent_low": 20.0,
+      "cent_high": 25.0,
+      "value": 0.022019,
+      "statistical": 0.000285,
+      "sys_plus": 0.000671,
+      "sys_minus": 0.000671,
+      "total_plus": 0.0007290171465747566,
+      "total_minus": 0.0007290171465747566
+    },
+    {
+      "cent_low": 25.0,
+      "cent_high": 30.0,
+      "value": 0.021273,
+      "statistical": 0.000272,
+      "sys_plus": 0.000754,
+      "sys_minus": 0.000754,
+      "total_plus": 0.0008015609770940699,
+      "total_minus": 0.0008015609770940699
+    },
+    {
+      "cent_low": 30.0,
+      "cent_high": 35.0,
+      "value": 0.019873,
+      "statistical": 0.00034,
+      "sys_plus": 0.000805,
+      "sys_minus": 0.000805,
+      "total_plus": 0.0008738563955250314,
+      "total_minus": 0.0008738563955250314
+    },
+    {
+      "cent_low": 35.0,
+      "cent_high": 40.0,
+      "value": 0.01807,
+      "statistical": 0.000373,
+      "sys_plus": 0.000826,
+      "sys_minus": 0.000826,
+      "total_plus": 0.0009063139632599731,
+      "total_minus": 0.0009063139632599731
+    },
+    {
+      "cent_low": 40.0,
+      "cent_high": 45.0,
+      "value": 0.01816,
+      "statistical": 0.000503,
+      "sys_plus": 0.000926,
+      "sys_minus": 0.000926,
+      "total_plus": 0.0010537955209622026,
+      "total_minus": 0.0010537955209622026
+    },
+    {
+      "cent_low": 45.0,
+      "cent_high": 50.0,
+      "value": 0.015273,
+      "statistical": 0.000886,
+      "sys_plus": 0.00086,
+      "sys_minus": 0.00086,
+      "total_plus": 0.0012347453178692357,
+      "total_minus": 0.0012347453178692357
+    },
+    {
+      "cent_low": 50.0,
+      "cent_high": 55.0,
+      "value": 0.015435,
+      "statistical": 0.000891,
+      "sys_plus": 0.000951,
+      "sys_minus": 0.000951,
+      "total_plus": 0.0013031814915812762,
+      "total_minus": 0.0013031814915812762
+    },
+    {
+      "cent_low": 55.0,
+      "cent_high": 60.0,
+      "value": 0.01218,
+      "statistical": 0.000971,
+      "sys_plus": 0.000816,
+      "sys_minus": 0.000816,
+      "total_plus": 0.0012683441961865083,
+      "total_minus": 0.0012683441961865083
+    }
+  ]
+}

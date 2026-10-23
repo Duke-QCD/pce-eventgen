@@ -52,6 +52,9 @@ class HydroinfoMUSIC {
                         fluidCell *info);
     void set_grid_infomatioin(const InitData &DATA);
     void print_grid_information();
+    // REVIEW(PCE): this interface does not retain the chemical clock or quark
+    // fugacities. Add them to storage/interpolation and consumer contracts
+    // before treating it as a complete PCE medium for external probes.
     void dump_ideal_info_to_memory(double tau, float eta, float epsilon,
                                    float pressure, float entropy, float T,
                                    float ux, float uy, float ueta);

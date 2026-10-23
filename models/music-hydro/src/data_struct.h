@@ -19,6 +19,7 @@ typedef struct {
     double e;
     double rhob;
     FlowVec u;
+    // PCE clock carried through primitive-variable reconstruction [fm].
     double proper_tau;
 } ReconstCell;
 

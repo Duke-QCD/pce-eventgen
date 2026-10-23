@@ -51,7 +51,7 @@ class EOS_base {
     gsl_spline *cs2_spline;
     gsl_spline *entropy_spline;
 
-    EOS_base() = default;
+    EOS_base();
     virtual ~EOS_base();
 
     std::string get_hydro_env_path() const;
@@ -77,9 +77,12 @@ class EOS_base {
 
     double interpolate1D(double e, int table_idx, double ***table) const;
     double interpolate2D(double e, double rhob, int table_idx, double ***table) const;
+    // PCE coordinate order: epsilon^(1/4), gamma_l, gamma_s.
     double interpolate3D(double e, double fugl, double fugs, double ***table) const;
 
     int    get_table_idx(double e) const;
+    // PCE: nonvirtual thermodynamic identity using the caller's clock; wrapper
+    // calls do not dispatch to EOS_PCE's tabulated entropy helper.
     double get_entropy  (double epsilon, double rhob, double proper_tau) const;
 
     double calculate_velocity_of_sound_sq(double e, double rhob, double proper_tau) const;
@@ -90,6 +93,7 @@ class EOS_base {
 
     virtual void   initialize_eos () {}
     virtual void   initialize_eos (int eos_id_in) {}
+    // proper_tau is the PCE fluid-cell clock [fm]; other EOS models may ignore it.
     virtual double get_cs2        (double e, double rhob, double proper_tau) const;
     virtual double p_rho_func     (double e, double rhob, double proper_tau) const {return(0.0);}
     virtual double p_e_func       (double e, double rhob, double proper_tau) const {return(0.0);}
@@ -105,6 +109,9 @@ class EOS_base {
     virtual double get_light_fugacity (double proper_tau) const {return(0.0);}
     virtual double get_strange_fugacity (double proper_tau) const {return(0.0);}
     virtual void   check_eos      () const {}
+    // WARNING(PCE): this constant is not a freeze-out criterion for other EOS
+    // models. The modified Cornelius finders require an EOS-aware adjustment
+    // before non-PCE freeze-out can be used again.
     virtual double get_T_ratio    (Cell_small &cell) const {return(1.0);}
     
     void check_eos_with_finite_muB() const;

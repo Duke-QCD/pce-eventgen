@@ -38,6 +38,11 @@
 #include "eos.h"
 #include "pretty_ostream.h"
 
+// Floats per element in a binary surface.dat: the 28 standard fields, the PCE
+// light/strange fugacities, bulk pressure, rhob and the four diffusion
+// components, in the order Evolve writes them.
+const int kBinarySurfaceRecordFloats = 36;
+
 const int nharmonics = 8;   // calculate up to maximum harmonic (n-1)
                             // -- for nharmonics = 8, calculate from v_0 o v_7
 const int etasize = 200;    // max number of points in eta for array
@@ -107,6 +112,7 @@ typedef struct surfaceElement {
     double q[4];            // baryon diffusion current
     double pi_b;            // bulk pressure
     double rho_B;           // net baryon density
+    // Custom PCE quark fugacities from surface columns 29/30 (dimensionless).
     double light_fugacity;
     double strange_fugacity;
     double epsilon_f;

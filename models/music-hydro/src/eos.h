@@ -22,7 +22,9 @@ class EOS {
 
     ~EOS() {};
 
-    // functions to call the function pointers
+    // PCE extends EOS queries with the advected fluid-cell clock [fm]. Pass
+    // that clock alongside the thermodynamic state rather than global tau;
+    // equilibrium EOS implementations retain the argument for compatibility.
     double get_pressure   (double e, double rhob, double proper_tau) const {return(eos_ptr->get_pressure(e, rhob, proper_tau));}
     double get_temperature(double e, double rhob, double proper_tau) const {return(eos_ptr->get_temperature(e, rhob, proper_tau));}
     double get_entropy    (double e, double rhob, double proper_tau) const {return(eos_ptr->get_entropy(e, rhob, proper_tau));}

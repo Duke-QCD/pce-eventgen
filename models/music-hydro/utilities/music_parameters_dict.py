@@ -1,3 +1,8 @@
+# WARNING(PCE): inherited defaults describe the old MUSIC workflow. Non-PCE
+# freeze-out, multiple energy thresholds and internal spectra require the
+# adjustments marked in src/. Add the custom PCE inputs and use the production
+# template before treating this dictionary as configuration for EOS 18.
+
 #########################################
 # parameters list for MUSIC with comments
 #########################################

@@ -1,5 +1,6 @@
 // Copyright 2018 @ Chun Shen
-
+// PCE: EOS 18, tabulated in (e^(1/4), gamma_l, gamma_s) with time-dependent
+// light and strange fugacities.
 #include "eos_PCE.h"
 #include "util.h"
 
@@ -19,58 +20,73 @@ EOS_PCE::EOS_PCE(const InitData &DATA_in) : DATA(DATA_in) {
     set_flag_muC(false);
 }
 
-
 void EOS_PCE::initialize_eos() {
-    // read the lattice EOS pressure, temperature, and 
+
+    // One independent file per strange-fugacity slice: 0.dat ... 29.dat.
+    // Each file is [q index][gamma_l index][q, P, s, T, cs2], five doubles;
+    // q=epsilon^(1/4), with 10000 energy points and 30 light occupancies.
     music_message.info("reading PCE EOS ...");
-    
-    auto envPath = get_hydro_env_path();
-    stringstream slocalpath;
-    slocalpath << envPath << "/EOS/PCE";
+
+    std::string eos_table_dir;
+
+    const char* eos_env = std::getenv("HIC_EOS_PCE_DIR");
+
+    if (eos_env != nullptr && std::string(eos_env).size() > 0) {
+        eos_table_dir = std::string(eos_env);
+    } else {
+        std::cerr << "ERROR: HIC_EOS_PCE_DIR is not set. "
+                  << "Set it to the PCE EoS table directory." << std::endl;
+        std::exit(1);
+    }
+
+    if (!eos_table_dir.empty() && eos_table_dir.back() != '/') {
+        eos_table_dir += "/";
+    }
+
+    std::stringstream slocalpath;
+    slocalpath << eos_table_dir;
 
     string path = slocalpath.str();
     music_message << "from path " << path;
     music_message.flush("info");
-   
-    set_number_of_tables(10);  // Number of fug_s values. itable here indexes distinct strange fugacities
+
+    set_number_of_tables(30);
     resize_table_info_arrays();
 
     int ntables = get_number_of_tables();
 
     pressure_tb    = new double** [ntables];
-    temperature_tb = new double** [ntables]; 
+    temperature_tb = new double** [ntables];
     cs2_tb         = new double** [ntables];
     energy_tb      = new double** [ntables];
     entropy_tb     = new double** [ntables];
-    //std::ifstream pce_eos(path + "/test.dat", std::ios::binary);
-    std::ifstream pce_eos(path + "/PCE_eos_smooth_e0p25spacing.dat", std::ios::binary);
 
     for (int itable = 0; itable < ntables; itable++) {
+        std::ifstream pce_eos(path + std::to_string(itable) + ".dat", std::ios::binary);
         std::ifstream* eos_file;
         eos_file = &pce_eos;
 
 	eos_file->clear();
 	eos_file->seekg(0);
-	// std::cout << itable << std::endl;
+
         if (!*eos_file) {
             music_message.error("Can not find the EoS file.");
 	    exit(1);
         }
-	
-        e_length[itable]  = 98000;
-	
-        fugl_length[itable] = 100;
+
+        e_length[itable]  = 10000;
+
+        fugl_length[itable] = 30;
 	fugl_bounds[itable] = 0;
 	fugl_spacing[itable] = 1/(fugl_length[itable]-1.);
-	fugs_length[itable] = ntables;
+	fugs_length[itable] = 30;
 	fugs_bounds[itable] = 0;
 	fugs_spacing[itable] = 1/(fugs_length[itable]-1.);
 
 	nb_length[itable] = fugl_length[itable];
 	nb_bounds[itable] = fugl_bounds[itable];
 	nb_spacing[itable] = fugl_spacing[itable];
-	 
-        // allocate memory for pressure arrays
+
         pressure_tb[itable] = Util::mtx_malloc(fugl_length[itable],
                                                e_length[itable]);
         temperature_tb[itable] = Util::mtx_malloc(fugl_length[itable],
@@ -82,86 +98,33 @@ void EOS_PCE::initialize_eos() {
         double temp;
         for (int ii = 0; ii < e_length[itable]; ii++) {
 	    for (int j = 0; j < fugl_length[itable]; j++) {
-  	        eos_file->read((char*)&temp, sizeof(double));  // e^(1/4) (1/fm)
- 	        //temp /= Util::hbarc;      // 1/fm^4
+	        eos_file->read((char*)&temp, sizeof(double));  // e^(1/4) [1/fm]
 	        if (ii == 0 and j == 0) e_bounds[itable] = temp;
 	        if (ii == 1 and j == 0) e_spacing[itable] = temp - e_bounds[itable];
 	        if (ii == e_length[itable] - 1 and j == 0 and itable == 0) set_eps_max(std::pow(temp,4));
 	        energy_tb[itable][j][ii] = temp;
 
-	        eos_file->read((char*)&temp, sizeof(double));  // P
-	        pressure_tb[itable][j][ii] = temp/Util::hbarc;      // 1/fm^4
+	        eos_file->read((char*)&temp, sizeof(double));  // P [GeV/fm^3]
+	        pressure_tb[itable][j][ii] = temp/Util::hbarc;  // [1/fm^4]
 
-	        eos_file->read((char*)&temp, sizeof(double));  // s
-	        entropy_tb[itable][j][ii] = temp;                   // 1/fm^3
+	        eos_file->read((char*)&temp, sizeof(double));  // s [1/fm^3]
+	        entropy_tb[itable][j][ii] = temp;
 
-	        eos_file->read((char*)&temp, sizeof(double));  // T
-	        temperature_tb[itable][j][ii] = temp/Util::hbarc;   // 1/fm
+	        eos_file->read((char*)&temp, sizeof(double));  // T [GeV]
+	        temperature_tb[itable][j][ii] = temp/Util::hbarc;  // [1/fm]
 
-		eos_file->read((char*)&temp, sizeof(double));  // cs2
+		eos_file->read((char*)&temp, sizeof(double));  // c_s^2
 		cs2_tb[itable][j][ii] = temp;
 	    }
         }
 
-	//	std::cout << temperature_tb[itable][0][0] << " " << temperature_tb[itable][99][99999] << " " << e_bounds[itable] << " " << e_spacing[itable] <<std::endl;
-	// if (itable == 1) {
-        //     acc = gsl_interp_accel_alloc();
-	    
-        //     pressure_spline = gsl_spline_alloc(gsl_interp_linear, e_length[itable]);
-	//     temperature_spline = gsl_spline_alloc(gsl_interp_linear, e_length[itable]);
-	//     cs2_spline = gsl_spline_alloc(gsl_interp_linear, e_length[itable]);
-	//     entropy_spline = gsl_spline_alloc(gsl_interp_linear, e_length[itable]);
-
-	//     gsl_spline_init(pressure_spline, energy_tb[itable][0], pressure_tb[itable][0], e_length[itable]);
-	//     gsl_spline_init(temperature_spline, energy_tb[itable][0], temperature_tb[itable][0], e_length[itable]);
-	//     gsl_spline_init(cs2_spline, energy_tb[itable][0], cs2_tb[itable][0], e_length[itable]);
-	//     gsl_spline_init(entropy_spline, energy_tb[itable][0], entropy_tb[itable][0], e_length[itable]);
-	// }
     }
-
-//    // Create and open an output file for the interpolated table
-//    std::ofstream interpolatedTableFile("interpolated_eos_table.dat", std::ios::binary);
-
-//    // Interpolate and write data to the output file
-//    double eMin = 0;  // Minimum energy density for testing
-//    double eMax = 0.0001;  // Maximum energy density for testing
-//    double eStep = 1e-9; // Energy density step size
-
-//    double tauMin = 0.6;
-//    double tauMax = 0.6;
-//    double tauStep = 1;
-
-//    for (double e = eMin; e <= eMax; e += eStep) {
-//       for (double tau = tauMin; tau <= tauMax; tau += tauStep) {
-//            double p = static_cast<double>(get_pressure(e, 0, tau));     // Pressure
-//            double s = static_cast<double>(get_entropy(e, 0, tau));     // Entropy
-//            double T = static_cast<double>(get_temperature(e, 0, tau)); // Temperature
-//            double cs2 = static_cast<double>(get_cs2(e, 0, tau));       // Speed of sound
-
-            // Write the interpolated values to the binary file
-//            interpolatedTableFile.write((char*) (&e), sizeof(double));
-//            interpolatedTableFile.write((char*) (&p), sizeof(double));
-//            interpolatedTableFile.write((char*) (&s), sizeof(double));
-//            interpolatedTableFile.write((char*) (&T), sizeof(double));
-//            interpolatedTableFile.write((char*) (&cs2), sizeof(double));
-//	}
-//    }
-
-    // Close the output file
-//    interpolatedTableFile.close();
-    
 
     music_message.info("Done reading EOS.");
 }
 
-
+// Linear interpolation in e^(1/4) [1/fm] along the equilibrium (gamma = 1) row.
 double EOS_PCE::interpolate1D(double e, int table_idx, double ***table) const {
-// This is a generic linear interpolation routine for EOS at zero mu_B
-// it assumes the class has already read in
-//        P(e), T(e), s(e)
-// as one-dimensional arrays on an equally spacing lattice grid
-// units: e is in 1/fm^4
-    //double local_ed = e*hbarc;  // [GeV/fm^3]
     double local_ed = e;
 
     const double e0       = e_bounds[table_idx];
@@ -169,56 +132,72 @@ double EOS_PCE::interpolate1D(double e, int table_idx, double ***table) const {
     const int N_e         = e_length[table_idx];
     const int N_fug       = fugl_length[table_idx];
 
-    // compute the indices
     int idx_e  = static_cast<int>((local_ed - e0)/delta_e);
 
-    // treatment for overflow, use the last two points to do extrapolation
     idx_e  = std::min(N_e - 2, idx_e);
 
-    // check underflow
     idx_e  = std::max(0, idx_e);
 
     const double frac_e = (local_ed - (idx_e*delta_e + e0))/delta_e;
 
     double result;
-    
+
     double temp1 = table[table_idx][N_fug-1][idx_e];
     double temp2 = table[table_idx][N_fug-1][idx_e + 1];
     result = temp1*(1. - frac_e) + temp2*frac_e;
 
-    //if (idx_e > 1 and table_idx == 1) {result = gsl_spline_eval(spline, e, acc);}
     return(result);
 }
 
+// Low-density smoothing: below epsilon = 1e-6 [1/fm^4], get_temperature
+// multiplies T by smooth switches in epsilon (1e-8 to 1e-6 [1/fm^4]) and in each
+// fugacity (1e-4 to 1), so dilute cells go smoothly to zero temperature.
+double EOS_PCE::smoothstep(double x, double x0, double x1) const {
+    if (x <= x0) return 0.0;
+    if (x >= x1) return 1.0;
+    double t = (x - x0)/(x1 - x0);
+
+    return t * t * t * (t * (6.0 * t - 15.0) + 10.0);
+}
+
+double EOS_PCE::smooth(double e, double fug_l, double fug_s) const {
+    return smoothstep(e,1e-8,1e-6)*smoothstep(fug_l,1e-4,1.0)*smoothstep(fug_s,1e-4,1.0);
+}
 
 double EOS_PCE::p_e_func(double e, double rhob, double proper_tau) const {
     return(get_dpOverde3(e, rhob, proper_tau));
 }
 
-//! This function returns the local temperature in [1/fm]
-//! input local energy density eps [1/fm^4] and rhob [1/fm^3]
+double EOS_PCE::get_dpOverde3(double e, double rhob, double proper_tau) const {
+    return(get_cs2(e, rhob, proper_tau));
+}
+
+//! Local temperature [1/fm] from energy density e [1/fm^4] at the cell clock.
 double EOS_PCE::get_temperature(double e, double rhob, double proper_tau) const {
+
     double light_fugacity = get_light_fugacity(proper_tau);
     double strange_fugacity = get_strange_fugacity(proper_tau);
 
     double T;
     if (light_fugacity == 1 and strange_fugacity == 1) T = interpolate1D(std::pow(e,0.25), get_number_of_tables()-1, temperature_tb);
     else T = interpolate3D(std::pow(e,0.25), light_fugacity, strange_fugacity, temperature_tb);
+    if (e < 1e-6) T *= smooth(e,light_fugacity,strange_fugacity);
+
     return(std::max(1e-15, T));
 }
 
-
-//! This function returns the local pressure in [1/fm^4]
-//! the input local energy density [1/fm^4], rhob [1/fm^3]
+//! Local pressure [1/fm^4] from energy density e [1/fm^4] at the cell clock.
 double EOS_PCE::get_pressure(double e, double rhob, double proper_tau) const {
+
     double light_fugacity = get_light_fugacity(proper_tau);
     double strange_fugacity = get_strange_fugacity(proper_tau);
+
     double f;
     if (light_fugacity == 1 and strange_fugacity == 1) f = interpolate1D(std::pow(e,0.25), get_number_of_tables()-1, pressure_tb);
     else f = interpolate3D(std::pow(e,0.25), light_fugacity, strange_fugacity, pressure_tb);
+
     return(std::max(1e-15, f));
 }
-
 
 double EOS_PCE::get_s2e(double s, double rhob, double proper_tau) const {
     double e = get_s2e_finite_rhob(s, 0.0, proper_tau);
@@ -230,6 +209,8 @@ double EOS_PCE::get_T2e(double T, double rhob, double proper_tau) const {
     return(e);
 }
 
+// The local advected clock controls independent exponential relaxation of the
+// two occupancies. A negative clock is reported as an error.
 double EOS_PCE::get_light_fugacity(double proper_tau) const {
     double fugacity;
     double tau0 = DATA.tau0;
@@ -237,10 +218,11 @@ double EOS_PCE::get_light_fugacity(double proper_tau) const {
     double fug0 = DATA.fug_l_0;
 
     if (proper_tau < 0) {
+        std::cout << "ERROR: Invalid proper tau: " << proper_tau << std::endl;
         fugacity = 0;
     }
 
-    else if (tau0 <= 0 or tau_eq <= 0) {
+    else if (tau0 < 0 or tau_eq <= 0) {
         fugacity = 1;
     }
 
@@ -257,16 +239,21 @@ double EOS_PCE::get_strange_fugacity(double proper_tau) const {
     double tau0 = DATA.tau0;
     double tau_eq = DATA.tau_eq_s;
     double fug0 = DATA.fug_s_0;
-  
-    if (tau0 <= 0 or tau_eq <= 0) {
+
+    if (proper_tau < 0) {
+        std::cout << "ERROR: Invalid proper tau: " << proper_tau << std::endl;
+        fugacity = 0;
+    }
+
+    else if (tau0 < 0 or tau_eq <= 0) {
         fugacity = 1;
     }
-  
+
     else {
         fugacity = 1 - (1-fug0)*exp((tau0 - proper_tau)/tau_eq);
         if (fugacity < 0) return(0);
     }
-  
+
     return(fugacity);
 }
 
@@ -274,7 +261,7 @@ double EOS_PCE::get_cs2(double e, double rhob, double proper_tau) const {
      double light_fugacity = get_light_fugacity(proper_tau);
      double strange_fugacity = get_strange_fugacity(proper_tau);
      double cs2;
-     
+
      if (light_fugacity == 1 and strange_fugacity == 1) cs2 = interpolate1D(std::pow(e,0.25), get_number_of_tables()-1, cs2_tb);
      else cs2 = interpolate3D(std::pow(e,0.25), light_fugacity, strange_fugacity, cs2_tb);
 
@@ -282,18 +269,22 @@ double EOS_PCE::get_cs2(double e, double rhob, double proper_tau) const {
      }
 
 double EOS_PCE::get_entropy(double e, double rhob, double proper_tau) const {
+
      double light_fugacity = get_light_fugacity(proper_tau);
      double strange_fugacity = get_strange_fugacity(proper_tau);
 
      double entropy;
      if (light_fugacity == 1 and strange_fugacity == 1) entropy = interpolate1D(std::pow(e,0.25), get_number_of_tables()-1, entropy_tb);
      else entropy = interpolate3D(std::pow(e,0.25), light_fugacity, strange_fugacity, entropy_tb);
+
      return(std::max(1e-15,entropy));
 }
 
+// PCE switching temperature [GeV]: 0.260 - 0.090*sqrt(gamma_l)
+// - 0.012*sqrt(gamma_s), approaching 0.158 in chemical equilibrium.
 double EOS_PCE::get_T_ratio(Cell_small &cell) const {
      double light_fugacity = get_light_fugacity(cell.proper_tau);
      double strange_fugacity = get_strange_fugacity(cell.proper_tau);
 
-     return (get_temperature(cell.epsilon, cell.rhob, cell.proper_tau)/(0.158/Util::hbarc*std::pow(light_fugacity,0.5) + 0.260/Util::hbarc*(1-std::pow(light_fugacity,0.5))));
+     return (get_temperature(cell.epsilon, cell.rhob, cell.proper_tau)/(0.158/Util::hbarc*std::pow(strange_fugacity,0.5) + 0.170/Util::hbarc*(std::pow(light_fugacity,0.5)-std::pow(strange_fugacity,0.5)) + 0.260/Util::hbarc*(1-std::pow(light_fugacity,0.5))));
 }

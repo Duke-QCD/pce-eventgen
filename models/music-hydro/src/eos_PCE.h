@@ -7,6 +7,8 @@
 #include "data.h"
 #include "grid.h"
 
+// WARNING(PCE): EOS 18 assumes zero conserved-charge chemical potentials;
+// evolving a baryon current does not supply finite-density thermodynamics.
 class EOS_PCE : public EOS_base {
  private:
     const InitData &DATA;
@@ -16,7 +18,10 @@ class EOS_PCE : public EOS_base {
     
     void initialize_eos();
     double interpolate1D(double e, int table_idx, double ***table) const;
+    double smoothstep(double x, double x0, double x1) const;
+    double smooth(double e, double fug_l, double fug_s) const;
     double p_e_func       (double e, double rhob, double proper_tau) const;
+    double get_dpOverde3(double e, double rhob, double proper_tau) const;
     double get_temperature(double e, double rhob, double proper_tau) const;
     double get_pressure   (double e, double rhob, double proper_tau) const;
     double get_s2e        (double s, double rhob, double proper_tau) const;

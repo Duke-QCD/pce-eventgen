@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# REVIEW(PCE): legacy internal MUSIC decay/observable jobs consume spectra
+# from the internal Cooper-Frye path, not SMASH output. Revalidate that complete
+# spectra/decay setup before reviving it as an alternative to the PCE pipeline.
+
+
 import sys
 from os import path
 

@@ -1,29 +1,162 @@
 #!/bin/bash
-# Check that we're in either a conda env or python virtualenv.
-# In a conda env if CONDA_PREFIX points to a valid directory and the python
-# executable is in CONDA_PREFIX.
-if [[ -d "$CONDA_PREFIX" && "$(which python)" -ef "$CONDA_PREFIX/bin/python" ]]; then
+set -e
+
+# Optional model names allow rebuilding SMASH without rebuilding the hydro chain.
+# Arguments after -- are forwarded to SMASH's CMake configuration.
+models=()
+smash_cmake_args=()
+while (($#)); do
+  case "$1" in
+    -h|--help)
+      echo "Usage: $0 [MODEL ...] [-- SMASH_CMAKE_OPTIONS ...]"
+      echo "Example: $0 SMASH -- -DPythia_CONFIG_EXECUTABLE=/path/to/pythia8-config"
+      exit 0
+      ;;
+    --)
+      shift
+      smash_cmake_args=("$@")
+      break
+      ;;
+    *) models+=("$1"); shift ;;
+  esac
+done
+
+# Prefer a Python virtualenv before checking inherited conda state. A venv's
+# Python can symlink to the conda interpreter, so `test -ef` alone cannot tell
+# which environment is active. pyvenv.cfg identifies the selected PATH prefix
+# even when VIRTUAL_ENV is unset.
+prefix="$(readlink -f "$(dirname "$(which python)")/..")"
+if [[ -f "$prefix/pyvenv.cfg" ]]; then
+  :
+elif [[ -d "$CONDA_PREFIX" && "$(which python)" -ef "$CONDA_PREFIX/bin/python" ]]; then
   prefix="$CONDA_PREFIX"
 else
-  # In a virtualenv if file pyvenv.cfg exists one level above the python
-  # executable.  (This is better than checking the VIRTUAL_ENV variable, which
-  # may not be set.)
-  prefix="$(readlink -f "$(dirname "$(which python)")/..")"
-  if [[ ! -f "$prefix/pyvenv.cfg" ]]; then
-    echo 'must install in an active python virtualenv or conda env'
-    exit 1
-  fi
+  echo 'must install in an active python virtualenv or conda env'
+  exit 1
 fi
 
 # go to project root (directory above this script)
 # https://stackoverflow.com/a/246128
 cd "$(dirname "${BASH_SOURCE[0]}")"/..
+repo_root="$PWD"
+
+all_models=(trento music-hydro iS3D SMASH)
+if ((${#models[@]} == 0)); then
+  models=("${all_models[@]}")
+fi
+for model in "${models[@]}"; do
+  if [[ ! " ${all_models[*]} " == *" $model "* ]]; then
+    echo "unknown model: $model (choose from: ${all_models[*]})" >&2
+    exit 1
+  fi
+  if [[ ! -f "models/$model/CMakeLists.txt" ]]; then
+    echo "missing source tree: models/$model/CMakeLists.txt" >&2
+    if [[ "$model" == SMASH ]]; then
+      echo "SMASH is a Git submodule; run: git submodule update --init models/SMASH" >&2
+    fi
+    exit 1
+  fi
+done
 
 # build each model
-for i in models/*/; do
-  pushd $i
+for model in "${models[@]}"; do
+  i="models/$model/"
+  if [[ "$model" == music-hydro ]]; then
+    music_build="${HIC_MUSIC_BUILD_DIR:-$repo_root/models/music-hydro/build-workflow}"
+    music_data_args=()
+    if [[ -n "${HIC_EOS_PCE_DIR:-}" ]]; then
+      music_data_args+=("-DMUSIC_PCE_TABLE_DIR=$HIC_EOS_PCE_DIR")
+    fi
+    if [[ -n "${HIC_MUSIC_INSTALL_PCE_DATA:-}" ]]; then
+      music_data_args+=("-DMUSIC_INSTALL_PCE_DATA=$HIC_MUSIC_INSTALL_PCE_DATA")
+    fi
+    cmake -S "$repo_root/models/music-hydro" -B "$music_build" \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" "${music_data_args[@]}"
+    cmake --build "$music_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
+    cmake --install "$music_build"
+    continue
+  fi
+  if [[ "$model" == iS3D ]]; then
+    is3d_build="${HIC_IS3D_BUILD_DIR:-$repo_root/models/iS3D/build-workflow}"
+    cmake -S "$repo_root/models/iS3D" -B "$is3d_build" \
+      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix"
+    cmake --build "$is3d_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
+    cmake --install "$is3d_build"
+    continue
+  fi
+  if [[ "$model" == SMASH ]]; then
+    # The workflow is validated against one upstream SMASH commit, pinned by the
+    # models/SMASH submodule. Refuse any other checkout before building.
+    smash_build="${HIC_SMASH_BUILD_DIR:-$repo_root/models/SMASH/build-workflow}"
+    if command -v git >/dev/null 2>&1 && [[ -e "$repo_root/models/SMASH/.git" ]]; then
+      smash_revision="$(git -C "$repo_root/models/SMASH" rev-parse HEAD)"
+      if [[ "$smash_revision" != 0985d6b32fb801404c933d70c86c23759d60ff1f ]]; then
+        echo "SMASH source revision must be the pinned commit 0985d6b32fb801404c933d70c86c23759d60ff1f (SMASH-3.0-1-g0985d6b3); run: git submodule update --init models/SMASH" >&2
+        exit 1
+      fi
+      git -C "$repo_root/models/SMASH" describe --tags --always --dirty
+    fi
+    # Particle and decay tables are compiled into SMASH. Refuse the known
+    # mixed-copy failure before rebuilding or replacing an installed executable.
+    if [[ -f "$repo_root/models/SMASH/input/particles.txt" && \
+          -f "$repo_root/models/SMASH/input/decaymodes.txt" ]]; then
+      python - "$repo_root/models/SMASH/input" <<'PY'
+from pathlib import Path
+import sys
+inputs = Path(sys.argv[1])
+def records(name):
+    return [line.split('#', 1)[0].split() for line in (inputs / name).read_text().splitlines()]
+sigma_defined = any(row and row[0] == 'σ' for row in records('particles.txt'))
+sigma_used = any('σ' in row for row in records('decaymodes.txt'))
+if not sigma_defined and sigma_used:
+    sys.exit('SMASH tables disagree: sigma is excluded from particles.txt but used in decaymodes.txt. '
+             'Restore the matching production particle and decay tables before installing.')
+PY
+    fi
+    smash_dependency_args=()
+    if [[ -x "$repo_root/models/SMASH/build-deps/pythia8309/bin/pythia8-config" ]]; then
+      smash_dependency_args+=("-DPythia_CONFIG_EXECUTABLE=$repo_root/models/SMASH/build-deps/pythia8309/bin/pythia8-config")
+    fi
+    cmake -S "$repo_root/models/SMASH" -B "$smash_build" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX="$prefix" \
+      -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
+      '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib' \
+      -DBUILD_TESTING=OFF \
+      -DTRY_USE_ROOT=OFF -DTRY_USE_HEPMC=OFF -DTRY_USE_RIVET=OFF \
+      "${smash_dependency_args[@]}" \
+      "${smash_cmake_args[@]}"
+    # CMake omits dependency directories inside the source tree from its
+    # automatic install RPATH. Include the resolved Pythia directory explicitly
+    # so build-deps/ works after installation as well as in the build tree.
+    python - "$repo_root/models/SMASH" "$smash_build" <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+source, build = sys.argv[1:]
+cache = {}
+for line in (Path(build) / 'CMakeCache.txt').read_text().splitlines():
+    key, separator, value = line.partition('=')
+    if separator and ':' in key:
+        cache[key.split(':', 1)[0]] = value
+library = cache.get('Pythia_LIBRARY', '')
+if library and not library.endswith('-NOTFOUND'):
+    directory = str(Path(library).parent)
+    paths = cache.get('CMAKE_INSTALL_RPATH', '').split(';')
+    if directory not in paths:
+        paths.append(directory)
+        subprocess.run(['cmake', '-S', source, '-B', build,
+                        '-DCMAKE_INSTALL_RPATH=' + ';'.join(paths)], check=True)
+PY
+    cmake --build "$smash_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
+    "$smash_build/smash" --version
+    cmake --install "$smash_build"
+    "$prefix/bin/smash" --version
+    continue
+  fi
+  pushd "$i"
 
-  # determine whether to build with CMake or python
+  # Build the remaining CMake model (TRENTO).
   if [[ -f CMakeLists.txt ]]; then
     # create build directory and run cmake if necessary
     if [[ -d build ]]; then
@@ -32,11 +165,6 @@ for i in models/*/; do
       mkdir build && cd build
       # subshell allows temporary environment modification
       (
-        [[ $i == *urqmd-afterburner* && $NERSC_HOST ]] && {
-          # urqmd has a fatal runtime error when compiled by Intel
-          module swap PrgEnv-{intel,gnu}
-          export FC=gfortran FFLAGS=$GNU_FLAGS
-        }
         exec cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/ \
@@ -45,14 +173,7 @@ for i in models/*/; do
     fi
 
     # compile and install
-    make --jobs=$(nproc) DESTDIR=$prefix install || exit 1
-  elif [[ -f setup.py ]]; then
-    # install python packages
-    # subshell allows temporary environment modification
-    (
-      [[ $PY_FLAGS ]] && export CFLAGS=$PY_FLAGS CXXFLAGS=$PY_FLAGS
-      exec python setup.py install
-    ) || exit 1
+    make --jobs="${HIC_BUILD_JOBS:-$(nproc)}" DESTDIR="$prefix" install || exit 1
   else
     echo "unknown build system for model $i"
     exit 1
@@ -63,3 +184,9 @@ done
 
 # install the event runner script and wrapper
 install -v models/run-events{,-wrapper} "$prefix/bin"
+
+# Keep the installed runner independent of a source checkout for conversion/config.
+workflow_data="$prefix/share/pce-eventgen"
+install -d "$workflow_data/models/iS3D" "$workflow_data/config"
+install -m 644 models/iS3D/iS3D_OSCAR.py "$workflow_data/models/iS3D/"
+install -m 644 config/config.yaml "$workflow_data/config/"

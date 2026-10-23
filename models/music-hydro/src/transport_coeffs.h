@@ -4,6 +4,7 @@
 
 #include "data.h"
 #include "eos.h"
+#include "grid.h"
 
 class TransportCoeffs {
  private:
@@ -15,7 +16,7 @@ class TransportCoeffs {
  public:
     TransportCoeffs(const EOS &eosIn, const InitData &DATA_in);
 
-    double get_eta_over_s(double T) const;
+    double get_eta_over_s(double T, Cell_small &cell) const;
     double get_zeta_over_s(double T) const;
 
     double get_temperature_dependent_eta_over_s_default(double T) const;
@@ -24,7 +25,7 @@ class TransportCoeffs {
     double get_temperature_dependent_eta_over_s_duke(double T) const;
     double get_temperature_dependent_zeta_over_s_duke(double T) const;
 
-    double get_temperature_dependent_eta_over_s_sims(double T) const;
+    double get_temperature_dependent_eta_over_s_sims(double T, Cell_small &cell) const;
     double get_temperature_dependent_zeta_over_s_sims(double T) const;
 
     // Second-order coefficients

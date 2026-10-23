@@ -1,0 +1,13 @@
+# ALICE Preliminary, SQM2026 Pucillo PDF p.10; |y|<0.5; <pT> [GeV] of K0S, full-pT extrapolated
+# (baryons: particle+antiparticle sample). Raster-digitized from staging/mean_pT_K0S_vs_multiplicity_VALUE_ONLY.csv.
+# err = ASSUMED 3% of value (O-O boxes read ~1-3%), NOT the digitized experimental error.
+# Compared to the model at matched <dNch/deta> (kind='vs_mult'); no percentile mapping.
+# dNch_deta val err
+11.6549 0.783944 0.0235183
+26.9109 0.820341 0.0246102
+38.1898 0.830924 0.0249277
+51.3114 0.839959 0.0251988
+67.4495 0.848477 0.0254543
+87.2203 0.858286 0.0257486
+107.3690 0.869386 0.0260816
+130.0212 0.885648 0.0265694

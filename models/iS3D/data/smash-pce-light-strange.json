@@ -1,0 +1,68 @@
+{
+  "schema": "is3d-deltaf-dataset-v1",
+  "dataset": "smash_pce_light_strange",
+  "origin": "Production hrg_eos=6 delta-f coefficient tables, checksummed from the maintainer copy on 2026-10-23",
+  "runtime_variable": "HIC_IS3D_DELTAF_DIR (directory above smash_pce_light_strange/)",
+  "format": {
+    "header": "line 1: number of temperatures (201); line 2: points per occupancy axis (101); line 3: column labels",
+    "columns": [
+      "T [GeV]",
+      "gamma_l",
+      "gamma_s",
+      "coefficient"
+    ],
+    "rows": "201 x 101 x 101 = 2,050,401"
+  },
+  "files": [
+    {
+      "name": "F.dat",
+      "bytes": 82016098,
+      "sha256": "c6679659e61ef3c23bbd3ccbb1448e5099273f6875bba462eccecda9fe96b9e0"
+    },
+    {
+      "name": "G.dat",
+      "bytes": 79965680,
+      "sha256": "13a0a76296b3533b58130bd49b7bd726bf79263f8ac2a13d7aacd29bdcbbf211"
+    },
+    {
+      "name": "betaV.dat",
+      "bytes": 80250843,
+      "sha256": "3af3b7b92c2de06d951f835fd03db595249c924025b5dfba8f436f8e53107709"
+    },
+    {
+      "name": "betabulk.dat",
+      "bytes": 81446358,
+      "sha256": "c083c77e15b67d1f9d6b776e17181b4303319f6f8d4645747b33ccadade3c94e"
+    },
+    {
+      "name": "betapi.dat",
+      "bytes": 82321475,
+      "sha256": "76b2da07dc8ba9b5de5ff1738090616ec073eb326d9d0186fdcbad1fccfbe70e"
+    },
+    {
+      "name": "c0.dat",
+      "bytes": 82021175,
+      "sha256": "34ef16f62460791c73d6bbf6ba33356e87f5dc58acf71765c98114d827c869bf"
+    },
+    {
+      "name": "c1.dat",
+      "bytes": 79965701,
+      "sha256": "d6bff35cb3252d3e564ea246e2e48270547bd60a3c7cccb700706479127d33a7"
+    },
+    {
+      "name": "c2.dat",
+      "bytes": 82016102,
+      "sha256": "8fbfb726cf9f6c3d51cd7c11a5c1755584dac3cb90e67847a73c30942801584f"
+    },
+    {
+      "name": "c3.dat",
+      "bytes": 82152624,
+      "sha256": "16827c0f9ee9901412a890f50ead338b17654d0d868e7c309f7521d75b94880f"
+    },
+    {
+      "name": "c4.dat",
+      "bytes": 79965701,
+      "sha256": "29a3748b6e04e2b3beac8c87b147c3ccb054814951bb16cb2d2af4d14d69214d"
+    }
+  ]
+}

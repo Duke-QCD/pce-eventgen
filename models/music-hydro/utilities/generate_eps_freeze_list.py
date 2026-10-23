@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# WARNING(PCE): legacy equilibrium s95p energy-threshold list generator.
+# These lists do not define the modified T/T_switch(gamma_l) PCE surface.
+# Adapt the EOS and freeze-out finder together before using this for PCE scans.
+
+
 from numpy import *
 from os import path
 

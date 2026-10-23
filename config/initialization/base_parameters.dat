@@ -1,0 +1,12 @@
+# Base parameter template for campaign rendering (run_designs.py).
+#
+# Each design's parameters.dat is rendered from this file: the design-table row
+# supplies the sampled parameters, and SYSTEM_CONFIG in models/run_designs.py
+# supplies the collision system, cross section and transverse grid. Only fixed,
+# unsampled settings belong here.
+
+# shear viscosity: temperature of the eta/s kink (GeV). With EOS 18 the kink
+# follows the local switching temperature instead; see docs/reference/physics.md.
+eta_over_s_T_kink_in_GeV = 0.18
+
+# end file

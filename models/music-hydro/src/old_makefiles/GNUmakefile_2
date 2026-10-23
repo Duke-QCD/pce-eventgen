@@ -1,3 +1,7 @@
+# WARNING(PCE): archived wrapper delegates to the old make-based source build,
+# not the current CMake PCE target. Adjust the delegated recipes/source lists
+# before reuse with this fork; it does not configure the current build.
+
 all	: mpihydro
 
 mpihydro:

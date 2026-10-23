@@ -405,7 +405,6 @@ void Freeze::ReadParticleData(InitData *DATA, EOS *eos) {
     // read particle data:
     while (i < DATA->NumberOfParticlesToInclude) {
         int temp;
-        //particleList[i].name = Util::char_malloc(50);
         temp = fscanf(p_file, "%d",  &particleList[i].number );
         temp = fscanf(p_file, "%s",   particleList[i].name   );
         temp = fscanf(p_file, "%lf", &particleList[i].mass   );
@@ -442,7 +441,6 @@ void Freeze::ReadParticleData(InitData *DATA, EOS *eos) {
         // include anti-baryons (there are none in the file)
         if (particleList[i].baryon != 0) {
             i++;
-            //particleList[i].name  = Util::char_malloc(50);
             particleList[i].width   =  particleList[i-1].width;
             particleList[i].charm   = -particleList[i-1].charm;
             particleList[i].bottom  = -particleList[i-1].bottom;
@@ -478,6 +476,9 @@ void Freeze::ReadParticleData(InitData *DATA, EOS *eos) {
 
 
 void Freeze::ReadFreezeOutSurface(InitData *DATA) {
+    // WARNING(PCE): this internal reader requires the custom two-fugacity
+    // surface layout. Unmodified upstream surfaces omit those fields and
+    // need explicit format adaptation before they can be read here.
     music_message.info("reading freeze-out surface");
 
     ostringstream surfdat_stream;
@@ -500,14 +501,14 @@ void Freeze::ReadFreezeOutSurface(InitData *DATA) {
     } else {
         surfdat.open(surfdat_stream.str().c_str());
     }
-    // Now allocate memory: array of surfaceElements with length NCells
-    //surface = (SurfaceElement *) malloc((NCells)*sizeof(SurfaceElement));
     int i = 0;
     while (i < NCells) {
         SurfaceElement temp_cell;
         if (surface_in_binary) {
-            float array[34];
-            for (int ii = 0; ii < 34; ii++) {
+            // One binary record per surface element, in the order Evolve writes
+            // it: 28 standard fields, gamma_l, gamma_s, bulk, rhob, q^mu.
+            float array[kBinarySurfaceRecordFloats];
+            for (int ii = 0; ii < kBinarySurfaceRecordFloats; ii++) {
                 float temp = 0.;
                 surfdat.read((char*)&temp, sizeof(float));
                 array[ii] = temp;
@@ -548,6 +549,7 @@ void Freeze::ReadFreezeOutSurface(InitData *DATA) {
             temp_cell.W[2][3] = array[26];
             temp_cell.W[3][3] = array[27];
 
+            // PCE extension after the ten shear-tensor entries.
 	    temp_cell.light_fugacity = array[28];
 	    temp_cell.strange_fugacity = array[29];
 	   
@@ -582,6 +584,7 @@ void Freeze::ReadFreezeOutSurface(InitData *DATA) {
                     >> temp_cell.W[1][3] >> temp_cell.W[2][2]
                     >> temp_cell.W[2][3] >> temp_cell.W[3][3];
 
+            // PCE text layout matches Evolve and the external iS3D reader.
 	    surfdat >> temp_cell.light_fugacity >> temp_cell.strange_fugacity;
 	    
             if (DATA->turn_on_bulk) {
@@ -631,7 +634,7 @@ int Freeze::get_number_of_lines_of_binary_surface_file(string filename) {
         surface_file.read((char*) &temp, sizeof(float));
         count++;
     }
-    int counted_line = count/34;
+    int counted_line = count/kBinarySurfaceRecordFloats;
     surface_file.close();
     return(counted_line);
 }

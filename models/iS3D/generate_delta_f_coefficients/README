@@ -1,0 +1,25 @@
+Coefficient generator workspaces and recipes
+
+smash_equilibrium/  generate_vh_coeff_smash_equilibrium.sh  hrg_eos=4
+smash_pce_light/    generate_vh_coeff_smash_pce_light.sh    hrg_eos=5
+smash/             generate_vh_coeff_smash.sh              legacy hrg_eos=2
+smash_box/         generate_vh_coeff_smash_box.sh          hrg_eos=3
+urqmd/             generate_vh_coeff_urqmd.sh              hrg_eos=1
+
+Recipes are invoked from this directory. Each copies the selected particle list
+to its workspace as pdg.dat, builds the table generator, and copies its output
+to ../deltaf_coefficients/vh/. The pdg_smash_pce.dat particle list
+keeps sigma excluded. The box-format particle parser is also
+used for this PCE list; it is a file format, not the coefficient table name.
+
+WARNING(PCE): legacy_pce_generator/ and its recipe
+ generate_vh_coeff_legacy_pce.sh
+still contain the copied single-occupancy implementation with meson/baryon
+powers. The recipe writes legacy_pce_generator output, not the production
+smash_pce_light_strange directory. This generator needs a physics adaptation
+before it can replace the copied production two-flavor tables (hrg_eos=6).
+
+Copied build caches and binaries retain their original paths and are historical
+artifacts. The maintained sampler is built separately from ../src/cpp. Naming
+changes here do not establish consistency of archived generators with the
+current valence-dependent sampler; see ../README.md before regeneration.

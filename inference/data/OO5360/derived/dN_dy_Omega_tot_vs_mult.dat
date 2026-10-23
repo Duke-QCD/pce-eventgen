@@ -1,0 +1,13 @@
+# ALICE Preliminary, SQM2026 Pucillo PDF p.21; |y|<0.5; full-pT extrapolated dN/dy of Omega_tot
+# (baryons: particle+antiparticle). Raster-digitized from staging/dN_dy_Omega_tot_vs_multiplicity_VALUE_ONLY.csv.
+# err = ASSUMED 15% of value (digitization + x-axis + typical syst), NOT experimental.
+# Compared to the model at matched <dNch/deta> (kind='vs_mult'); no percentile mapping.
+# dNch_deta val err
+11.7527 0.00369834 0.000554751
+26.9491 0.0120058 0.00180087
+37.8732 0.0178495 0.00267743
+51.3225 0.0258686 0.0038803
+66.8176 0.0358675 0.00538013
+86.8598 0.0511042 0.00766563
+106.0486 0.0607933 0.00911899
+129.9298 0.0792815 0.0118922

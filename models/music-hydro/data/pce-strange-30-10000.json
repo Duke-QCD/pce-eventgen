@@ -1,0 +1,181 @@
+{
+  "schema": "music-pce-dataset-v1",
+  "dataset": "strange_30_10000",
+  "origin": "User-provided NERSC production dataset",
+  "runtime_variable": "HIC_EOS_PCE_DIR",
+  "format": {
+    "byte_order": "little",
+    "scalar": "float64",
+    "strange_slices": 30,
+    "light_points": 30,
+    "energy_points": 10000,
+    "record_order": [
+      "epsilon_quarter_power",
+      "pressure",
+      "entropy_density",
+      "temperature",
+      "sound_speed_squared"
+    ],
+    "layout": "one file per gamma_s=index/29; records ordered [energy index][gamma_l index]",
+    "light_grid": "gamma_l=index/29",
+    "raw_units": [
+      "fm^-1",
+      "GeV/fm^3",
+      "fm^-3",
+      "GeV",
+      "dimensionless"
+    ]
+  },
+  "files": [
+    {
+      "name": "0.dat",
+      "bytes": 12000000,
+      "sha256": "a1d7df32694a173dc97c2afd1c0312d687384f7cacd69b01b30ad68e8f207a67"
+    },
+    {
+      "name": "1.dat",
+      "bytes": 12000000,
+      "sha256": "b8277dacbc72f1a3feeecd6fd7e026a672af2199ac2cede283c0a4617110ee39"
+    },
+    {
+      "name": "2.dat",
+      "bytes": 12000000,
+      "sha256": "4af52c796c911044c5d008fb5562c026334baff4141329fdc43e64531ce2725f"
+    },
+    {
+      "name": "3.dat",
+      "bytes": 12000000,
+      "sha256": "dd24203bee1e4cf85d509a8fc6576f7504256d3e94752738331750872267cedb"
+    },
+    {
+      "name": "4.dat",
+      "bytes": 12000000,
+      "sha256": "e47239c26cbf8e6c4b2edeaf9f750b8429d3aae7effbb526a2d759a3f88cc058"
+    },
+    {
+      "name": "5.dat",
+      "bytes": 12000000,
+      "sha256": "b132185fb1f718f923411b8593ef18cf52bd519c5ff5ee71217d077a2e405a5c"
+    },
+    {
+      "name": "6.dat",
+      "bytes": 12000000,
+      "sha256": "16187049a42032ae7db5c8bff656215edf5cf6a49e8ed7d763396b201a19d525"
+    },
+    {
+      "name": "7.dat",
+      "bytes": 12000000,
+      "sha256": "40bf338646b03c258a3356b53f3e19f44885513ae55db5110312debffbe9df1e"
+    },
+    {
+      "name": "8.dat",
+      "bytes": 12000000,
+      "sha256": "c7c412ee1fc19f1f5eb8e7c67e3fe4135e60157412bc9a0404567815f579b95f"
+    },
+    {
+      "name": "9.dat",
+      "bytes": 12000000,
+      "sha256": "c4f6f7659b7be46d71f94aaf80cb175ac629127194bbe8dadf8b116f47c772d0"
+    },
+    {
+      "name": "10.dat",
+      "bytes": 12000000,
+      "sha256": "65469941dd8e877ee77c7f66fe77ece165da3ee0d882b26d1b27f4f158fa6c0e"
+    },
+    {
+      "name": "11.dat",
+      "bytes": 12000000,
+      "sha256": "79234c3d45087b26a644de3f9de403bab4b239e79463c5ad3774a4576b74d608"
+    },
+    {
+      "name": "12.dat",
+      "bytes": 12000000,
+      "sha256": "7200c0cf48dc3e7b39616e722c80014655657071414a041f4cedb163a41a7a83"
+    },
+    {
+      "name": "13.dat",
+      "bytes": 12000000,
+      "sha256": "2731d4e092bbb4249c81531bf70cb95f51993d5960b8323ab77b421f5d109bb8"
+    },
+    {
+      "name": "14.dat",
+      "bytes": 12000000,
+      "sha256": "9ab94264f9302ce9a7d65af2de6588a07d074ab6e00e2a384180a8b47b935cfd"
+    },
+    {
+      "name": "15.dat",
+      "bytes": 12000000,
+      "sha256": "15b7f56ef2ccc428ecbd146cb9bcab35ab30c01720b741663d428c8126e071f2"
+    },
+    {
+      "name": "16.dat",
+      "bytes": 12000000,
+      "sha256": "e8610d6e883e3a4c71fd1a72aee5b6a0d7a426ee7d102cda01840dd51a80740f"
+    },
+    {
+      "name": "17.dat",
+      "bytes": 12000000,
+      "sha256": "c55b3004d5f0def6c23e8b38a126e3d5a065b038f135f9e572956112fd8b188a"
+    },
+    {
+      "name": "18.dat",
+      "bytes": 12000000,
+      "sha256": "36ce907687192853e4f241c78137c6a2b2f5098c6b07db3caf68846eab581dfd"
+    },
+    {
+      "name": "19.dat",
+      "bytes": 12000000,
+      "sha256": "ae81411ad8e6c77355e8b6a948aa4b855bad206baa89c85316ccc0f0523edc8c"
+    },
+    {
+      "name": "20.dat",
+      "bytes": 12000000,
+      "sha256": "efdcb0130fcc64011adf911235cb1e9c5beeeb039c4d463850471a98dbed2665"
+    },
+    {
+      "name": "21.dat",
+      "bytes": 12000000,
+      "sha256": "3658059d466c8d13d1926e6be011a8ae1a8499a6927bfdb3b441a105a68fadfe"
+    },
+    {
+      "name": "22.dat",
+      "bytes": 12000000,
+      "sha256": "32c38135683013a56b79dc2a7ac6b988c668a4e29b94dc3bc15242f178d3748c"
+    },
+    {
+      "name": "23.dat",
+      "bytes": 12000000,
+      "sha256": "c65fec3983209295a9bd83358106e603c76aeb495638ae460819517a82d02b51"
+    },
+    {
+      "name": "24.dat",
+      "bytes": 12000000,
+      "sha256": "df4f3e0da05666fac0a09f1f49ec124246705423aae1850809fbfb35f8feb963"
+    },
+    {
+      "name": "25.dat",
+      "bytes": 12000000,
+      "sha256": "a4436eb5a5e1e55f1615cb27fe79d55954f5f2714ea5b247ce775dfe26437f8d"
+    },
+    {
+      "name": "26.dat",
+      "bytes": 12000000,
+      "sha256": "f34bebb5928c73ce62030204f44cd64682059783ffe43fcc993388ca540a3a14"
+    },
+    {
+      "name": "27.dat",
+      "bytes": 12000000,
+      "sha256": "2348647fa16b4a17826abc20a12d754a6f70cd92dd8221ef641563e099373a4b"
+    },
+    {
+      "name": "28.dat",
+      "bytes": 12000000,
+      "sha256": "561e572225ce0e62c001388e11833f2abe70d3c1b77a8ec88dd16e186026fe7c"
+    },
+    {
+      "name": "29.dat",
+      "bytes": 12000000,
+      "sha256": "f16db6ae2a9131922d1e4b9b2e5938bd3b2bf59c3a4162349a0badb9b154b224"
+    }
+  ]
+}

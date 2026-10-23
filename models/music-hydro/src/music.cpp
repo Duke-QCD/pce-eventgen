@@ -101,6 +101,8 @@ int MUSIC::run_hydro() {
 
 //! this is a shell function to run Cooper-Frye
 int MUSIC::run_Cooper_Frye() {
+    // WARNING(PCE): legacy internal particlization needs the adjustments marked
+    // in freeze.cpp/freeze_pseudo.cpp before serving as a PCE iS3D replacement.
     Freeze cooper_frye(&DATA);
     cooper_frye.CooperFrye_pseudo(DATA.particleSpectrumNumber, mode,
                                   &DATA, &eos);
@@ -117,6 +119,9 @@ void MUSIC::check_eos() {
 //! this is a test function to output the transport coefficients as
 //! function of T and mu_B
 void MUSIC::output_transport_coefficients() {
+    // WARNING(PCE): the Diss diagnostic routines below use proper_tau = 0;
+    // they do not scan the evolving PCE composition. Adjust their clocks and
+    // entropy evaluation before interpreting these as PCE transport tables.
     music_message << "output transport coefficients as functions of T and muB";
     music_message.flush("info");
     Diss temp_dissipative_ptr(eos, DATA);

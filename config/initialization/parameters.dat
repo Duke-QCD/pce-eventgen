@@ -1,0 +1,35 @@
+# Standalone example: design row 0 of design_params_combined500.dat, rendered for
+# AuAu200 exactly as run_designs.py renders a campaign design.
+
+# initial condition
+
+system = Au Au
+normalization = 15.8416
+nucleon_width = 0.928387
+gamma_fluctuation = 1.032236
+cross_section = 4.23
+grid_step = 0.1
+grid_max = 15
+
+# quark fugacities
+
+Initial_light_quark_fugacity = 0.855575
+Initial_strange_quark_fugacity = 0.82028
+Light_quark_equilibration_time = 9.026873
+Strange_quark_equilibration_time = 9.168567
+
+# shear viscosity
+
+eta_over_s_T_kink_in_GeV = 0.18
+eta_over_s_low_T_slope_in_GeV = -1.916083
+eta_over_s_high_T_slope_in_GeV = 1.4937
+eta_over_s_at_kink = 0.187752
+
+# bulk viscosity
+
+zeta_over_s_max = 0.056868
+zeta_over_s_width_in_GeV = 0.133152
+zeta_over_s_T_peak_in_GeV = 0.148072
+zeta_over_s_lambda_asymm = 0.930859
+
+# end file

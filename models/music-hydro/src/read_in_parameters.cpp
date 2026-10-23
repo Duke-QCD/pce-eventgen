@@ -157,6 +157,7 @@ InitData read_in_parameters(std::string input_file) {
         istringstream (tempinput) >> temp_freeze_eps_flag;
     parameter_list.freeze_eps_flag = temp_freeze_eps_flag;
 
+    // The production workflow sets 0: iS3D (mode 6) reads the text surface.
     int temp_freeze_surface_binary = 1;
     tempinput = Util::StringFind4(input_file, "freeze_surface_in_binary");
     if (tempinput != "empty")
@@ -327,7 +328,8 @@ InitData read_in_parameters(std::string input_file) {
         istringstream(tempinput) >> temptau0;
     parameter_list.tau0 = temptau0;
 
-    // Initial quark fugacities
+    // Custom PCE inputs: independent light/strange initial fugacities and
+    // relaxation times. EOS_PCE evaluates them using each cell's proper_tau.
     double tempfug_l_0 = 0;
     tempinput = Util::StringFind4(input_file, "Initial_light_quark_fugacity");
     if (tempinput != "empty")
@@ -340,7 +342,7 @@ InitData read_in_parameters(std::string input_file) {
         istringstream(tempinput) >> tempfug_s_0;
     parameter_list.fug_s_0 = tempfug_s_0;
 
-    // PCE equilibration times: in fm
+    // PCE equilibration times [fm]; zero selects equilibrium for that sector.
     double temptau_eq_l = 0;
     tempinput = Util::StringFind4(input_file, "Light_quark_equilibration_time");
     if (tempinput != "empty")

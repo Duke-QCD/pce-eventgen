@@ -166,6 +166,8 @@ int U_derivative::MakeDSpatial(double tau, SCGrid &arena,
     // dUsup[rk_flag][4][n] = partial_n (muB/T)
     // partial_x (muB/T) and partial_y (muB/T) first
     int m = 4;  // means (muB/T)
+    // PCE: each EOS sample, including neighboring cells below, uses its own
+    // advected clock when forming the thermodynamic gradients.
     double rhob, eps, muB, T, proper_tau;
     rhob = arena(ix, iy, ieta).rhob;
     eps = arena(ix, iy, ieta).epsilon;

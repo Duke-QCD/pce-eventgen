@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+.matplotlib/
+
+# Generated model inputs are selected separately for each inference campaign.
+/model/*.npz
+/model/*.meta.json
+
+# Existing scripts use these naming conventions for generated results.
+/plots*/
+/plots*.log
+/plots*.status
+/scan_*/
+*.log

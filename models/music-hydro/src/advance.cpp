@@ -82,6 +82,8 @@ void Advance::AdvanceIt(double tau, SCGrid &arena_prev, SCGrid &arena_current,
         }
     }
 
+    // PCE: after the RK update advances the local clock, transport it with
+    // the flow so chemical relaxation follows the fluid rather than the grid.
     Advection(arena_current, arena_future);
 }
 
@@ -133,15 +135,6 @@ void Advance::FirstRKStepT(const double tau, double x_local, double y_local,
         // add energy moemntum and net baryon density source terms
         qi[alpha] += qi_source[alpha]*DATA.delta_tau;
 
-        // set baryon density back to zero if viscous correction made it
-        // non-zero remove/modify if rho_b!=0
-        // - this is only to remove the viscous correction that
-        // can make rho_b negative which we do not want.
-        //if (DATA.turn_on_rhob == 0) {
-        //    if (alpha == 4 && std::abs(qi[alpha]) > 1e-12)
-        //        qi[alpha] = 0.;
-        //}
-
         /* if rk_flag > 0, we now have q0 + k1 + k2. 
          * So add q0 and multiply by 1/2 */
         qi[alpha] += rk_flag*get_TJb(arena_prev(ix,iy,ieta), alpha, 0)*tau;
@@ -152,7 +145,6 @@ void Advance::FirstRKStepT(const double tau, double x_local, double y_local,
     
     double tau_next = tau + DATA.delta_tau;
     auto grid_rk_t = reconst_helper.ReconstIt_shell(tau_next, qi, arena_current(ix, iy, ieta), flag);
-    //if (flag == 1) {std::cout << "Printing: " << ix << " " << grid_rk_t.u[1] << std::endl;}
     UpdateTJbRK(grid_rk_t, arena_future(ix, iy, ieta));
 }
 
@@ -297,8 +289,13 @@ void Advance::FirstRKStepW(
     }
 }
 
-// spatial component of proper time evolution
-// current version neglects eta dimension
+// PCE: semi-Lagrangian transport of the fluid-cell clock in x and y only.
+// Snapshot the already advanced clock before interpolating, so later cells do
+// not use neighbors that have already been advected. Rapidity advection is
+// absent in the current implementation, including for non-boost-invariant runs.
+// WARNING(PCE): boost_invariant = 0 does not enable longitudinal clock
+// transport. Implement/validate that transport before using this as a full
+// 3+1D PCE evolution with rapidity-dependent composition.
 void Advance::Advection(SCGrid&arena_current, SCGrid &arena_future) {
     double proper_tau_prev[arena_current.nX()][arena_current.nY()][arena_current.nEta()];
     for (int ieta = 0; ieta < arena_current.nEta(); ieta++)
@@ -319,6 +316,8 @@ void Advance::Advection(SCGrid&arena_current, SCGrid &arena_future) {
         double vxmid = 0.5*(arena_current(ix,iy,ieta).u[1]/(cosh(eta)*arena_current(ix,iy,ieta).u[0]+sinh(eta)*arena_current(ix,iy,ieta).u[3]) + arena_future(ix,iy,ieta).u[1]/(cosh(eta)*arena_future(ix,iy,ieta).u[0]+sinh(eta)*arena_future(ix,iy,ieta).u[3]));
 	double vymid = 0.5*(arena_current(ix,iy,ieta).u[2]/(cosh(eta)*arena_current(ix,iy,ieta).u[0]+sinh(eta)*arena_current(ix,iy,ieta).u[3]) + arena_future(ix,iy,ieta).u[2]/(cosh(eta)*arena_future(ix,iy,ieta).u[0]+sinh(eta)*arena_future(ix,iy,ieta).u[3]));
 
+        // Trace back along the midpoint transverse velocity and bilinearly
+        // interpolate the clock at that departure point.
 	double xm = -vxmid*DATA.delta_tau/DATA.delta_x;
 	double ym = -vymid*DATA.delta_tau/DATA.delta_y;
 
@@ -353,8 +352,6 @@ void Advance::QuestRevert(double tau, Cell_small *grid_pt,
     double rhob      = grid_pt->rhob;
     double proper_tau = grid_pt->proper_tau;
 
-    // regulation factor in the default MUSIC
-    // double factor = 300.*tanh(grid_pt->epsilon/eps_scale);
     double xi = 0.05;
     double factor = 10.*DATA.quest_revert_strength*(1./(exp(-(e_local - eps_scale)/xi) + 1.)
                           - 1./(exp(eps_scale/xi) + 1.));
@@ -567,8 +564,6 @@ void Advance::MakeDeltaQI(const double tau, SCGrid &arena_current,
                 - (T_eta_m[0] + T_eta_p[0])*sinh_deta)*DATA.delta_tau);
 
     // geometric terms
-    //rhs[0] -= get_TJb(arena_current(ix, iy, ieta), 3, 3)*DATA.delta_tau;
-    //rhs[3] -= get_TJb(arena_current(ix, iy, ieta), 3, 0)*DATA.delta_tau;
 
     #pragma omp simd
     for (int i = 0; i < 5; i++) {

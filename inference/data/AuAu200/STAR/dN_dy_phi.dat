@@ -1,0 +1,11 @@
+#https://arxiv.org/pdf/nucl-ex/0406003
+#cuts |y| < 0.5 for phi; STAR Au+Au sqrt(s_NN)=200 GeV
+#STAR Au+Au sqrt(s_NN)=200 GeV; integrated dN/dy from Table I
+#table quotes statistical errors only; the text states an overall 11% systematic uncertainty on dN/dy
+#single err column is sqrt(stat^2 + (0.11*val)^2)
+#cent_low cent_high cent_mid val err
+0 5 2.5 7.7 0.898559
+0 10 5 6.65 0.810921
+10 30 20 3.82 0.461159
+30 50 40 1.72 0.198486
+50 80 65 0.48 0.056461

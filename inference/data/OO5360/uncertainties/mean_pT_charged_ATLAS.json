@@ -1,0 +1,253 @@
+{
+  "source_record": "3170344",
+  "source_table": "MeanpT_vs_eta_OO_centdep_midrapidity_pT270MeV.yaml",
+  "submission_metadata": {
+    "additional_resources": [
+      {
+        "description": "Text data file",
+        "location": "MeanpT_vs_eta_OO_centdep_midrapidity_pT270MeV.txt"
+      }
+    ],
+    "data_file": "MeanpT_vs_eta_OO_centdep_midrapidity_pT270MeV.yaml",
+    "description": "The centrality dependence of $\\langle p_{\\text{T}} \\rangle$ in $\\text{O}+\\text{O}$ collisions, as a function of $\\eta$, measured at mid-pseudorapidity $|\\eta|<0.5$. Results are shown for the $p_\\text{T}>270$ MeV fiducial acceptance.",
+    "keywords": [
+      {
+        "name": "cmenergies",
+        "values": [
+          5360
+        ]
+      },
+      {
+        "name": "phrases",
+        "values": [
+          "charged particles"
+        ]
+      },
+      {
+        "name": "reactions",
+        "values": [
+          "O O --> CHARGED X",
+          "NE NE --> CHARGED X"
+        ]
+      }
+    ],
+    "location": "Figure 22 in paper, but for the $p_{\\text{T}}>270$ MeV fiducial acceptance",
+    "name": "MeanpT_vs_eta_OO_centdep_midrapidity_pT270MeV"
+  },
+  "qualifiers": [
+    {
+      "name": "Minimum $p_{\\text{T}}$",
+      "value": "270 MeV"
+    },
+    {
+      "name": "Collision species",
+      "value": "O-O"
+    },
+    {
+      "name": "Rapidity restriction",
+      "value": "$|\\eta| < 0.5$"
+    }
+  ],
+  "rows": [
+    {
+      "cent_low": 0.0,
+      "cent_high": 1.0,
+      "value": 0.7976,
+      "statistical": 0.00017381,
+      "sys_plus": 0.0016205,
+      "sys_minus": 0.00053333,
+      "total_plus": 0.0016297945165265467,
+      "total_minus": 0.0005609374341225588
+    },
+    {
+      "cent_low": 1.0,
+      "cent_high": 2.0,
+      "value": 0.78921,
+      "statistical": 0.00018231,
+      "sys_plus": 0.0015948,
+      "sys_minus": 0.00054302,
+      "total_plus": 0.0016051865860702923,
+      "total_minus": 0.0005728068230215139
+    },
+    {
+      "cent_low": 2.0,
+      "cent_high": 3.0,
+      "value": 0.78512,
+      "statistical": 0.00018709,
+      "sys_plus": 0.0015914,
+      "sys_minus": 0.00053692,
+      "total_plus": 0.0016023597062145565,
+      "total_minus": 0.0005685822319594589
+    },
+    {
+      "cent_low": 3.0,
+      "cent_high": 4.0,
+      "value": 0.78279,
+      "statistical": 0.00019117,
+      "sys_plus": 0.0015798,
+      "sys_minus": 0.00052377,
+      "total_plus": 0.0015913246082745027,
+      "total_minus": 0.0005575670200074607
+    },
+    {
+      "cent_low": 4.0,
+      "cent_high": 5.0,
+      "value": 0.78097,
+      "statistical": 0.00019502,
+      "sys_plus": 0.001566,
+      "sys_minus": 0.00050862,
+      "total_plus": 0.0015780965751182657,
+      "total_minus": 0.0005447266330922328
+    },
+    {
+      "cent_low": 5.0,
+      "cent_high": 10.0,
+      "value": 0.77706,
+      "statistical": 9.1474e-05,
+      "sys_plus": 0.001555,
+      "sys_minus": 0.00050691,
+      "total_plus": 0.0015576881885268309,
+      "total_minus": 0.0005150973119479464
+    },
+    {
+      "cent_low": 10.0,
+      "cent_high": 15.0,
+      "value": 0.77311,
+      "statistical": 9.8514e-05,
+      "sys_plus": 0.0015205,
+      "sys_minus": 0.00047774,
+      "total_plus": 0.0015236880449081432,
+      "total_minus": 0.0004877914675309522
+    },
+    {
+      "cent_low": 15.0,
+      "cent_high": 20.0,
+      "value": 0.77051,
+      "statistical": 0.00010574,
+      "sys_plus": 0.0015079,
+      "sys_minus": 0.00045439,
+      "total_plus": 0.001511602910026307,
+      "total_minus": 0.00046653104902031977
+    },
+    {
+      "cent_low": 20.0,
+      "cent_high": 25.0,
+      "value": 0.76832,
+      "statistical": 0.0001135,
+      "sys_plus": 0.0014958,
+      "sys_minus": 0.0004166,
+      "total_plus": 0.001500099960002666,
+      "total_minus": 0.00043178444853885135
+    },
+    {
+      "cent_low": 25.0,
+      "cent_high": 30.0,
+      "value": 0.76634,
+      "statistical": 0.00012192,
+      "sys_plus": 0.0015042,
+      "sys_minus": 0.00050509,
+      "total_plus": 0.0015091329054791696,
+      "total_minus": 0.0005195963765270116
+    },
+    {
+      "cent_low": 30.0,
+      "cent_high": 35.0,
+      "value": 0.76415,
+      "statistical": 0.0001311,
+      "sys_plus": 0.0015174,
+      "sys_minus": 0.00055891,
+      "total_plus": 0.0015230528454390543,
+      "total_minus": 0.0005740797837409013
+    },
+    {
+      "cent_low": 35.0,
+      "cent_high": 40.0,
+      "value": 0.76162,
+      "statistical": 0.00014125,
+      "sys_plus": 0.0015351,
+      "sys_minus": 0.00058354,
+      "total_plus": 0.0015415847600764611,
+      "total_minus": 0.0006003919503957395
+    },
+    {
+      "cent_low": 40.0,
+      "cent_high": 45.0,
+      "value": 0.75887,
+      "statistical": 0.00015238,
+      "sys_plus": 0.0015679,
+      "sys_minus": 0.00069253,
+      "total_plus": 0.0015752872990029468,
+      "total_minus": 0.0007090962313395834
+    },
+    {
+      "cent_low": 45.0,
+      "cent_high": 50.0,
+      "value": 0.75575,
+      "statistical": 0.00016477,
+      "sys_plus": 0.0016064,
+      "sys_minus": 0.00079382,
+      "total_plus": 0.001614828199190242,
+      "total_minus": 0.0008107399985815427
+    },
+    {
+      "cent_low": 50.0,
+      "cent_high": 55.0,
+      "value": 0.75207,
+      "statistical": 0.00017821,
+      "sys_plus": 0.0016878,
+      "sys_minus": 0.0011228,
+      "total_plus": 0.0016971822660221264,
+      "total_minus": 0.0011368547154759925
+    },
+    {
+      "cent_low": 55.0,
+      "cent_high": 60.0,
+      "value": 0.74755,
+      "statistical": 0.00019297,
+      "sys_plus": 0.0019621,
+      "sys_minus": 0.0013255,
+      "total_plus": 0.001971566339462104,
+      "total_minus": 0.001339472907863388
+    },
+    {
+      "cent_low": 60.0,
+      "cent_high": 65.0,
+      "value": 0.74264,
+      "statistical": 0.00020934,
+      "sys_plus": 0.0019489,
+      "sys_minus": 0.0018537,
+      "total_plus": 0.001960110824825984,
+      "total_minus": 0.0018654830274221206
+    },
+    {
+      "cent_low": 65.0,
+      "cent_high": 70.0,
+      "value": 0.73546,
+      "statistical": 0.00022738,
+      "sys_plus": 0.0026988,
+      "sys_minus": 0.0025138,
+      "total_plus": 0.0027083617011765615,
+      "total_minus": 0.0025240626189538167
+    },
+    {
+      "cent_low": 70.0,
+      "cent_high": 75.0,
+      "value": 0.72667,
+      "statistical": 0.00024765,
+      "sys_plus": 0.0034037,
+      "sys_minus": 0.0031627,
+      "total_plus": 0.003412697497947921,
+      "total_minus": 0.0031723810950924545
+    },
+    {
+      "cent_low": 75.0,
+      "cent_high": 80.0,
+      "value": 0.71596,
+      "statistical": 0.00027091,
+      "sys_plus": 0.0041308,
+      "sys_minus": 0.0062088,
+      "total_plus": 0.004139674005051605,
+      "total_minus": 0.006214707528765935
+    }
+  ]
+}

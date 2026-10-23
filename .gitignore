@@ -1,0 +1,59 @@
+# Python runtime and local test caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Editor recovery files and desktop metadata
+*~
+\#*\#
+.DS_Store
+
+# Local recovery snapshots.
+/.recovery/
+
+# Externally managed production physics data. Checked-in manifests record their
+# checksums; verify a copy with tools/check_physics_data.py.
+/models/music-hydro/EOS/PCE/*
+!/models/music-hydro/EOS/PCE/eos-strange.py
+!/models/music-hydro/EOS/PCE/README.md
+/models/iS3D/deltaf_coefficients/vh/smash_pce_light_strange/
+
+# Generated model builds, compiled executables and source-tree test output.
+*.o
+/models/*/build/
+/models/*/build-workflow/
+/models/iS3D/iS3D
+/models/iS3D/src/cpp/iS3D.e
+/models/iS3D/generate_delta_f_coefficients/*/df_vh_dimensionless/build/
+/models/iS3D/generate_delta_f_coefficients/*/df_vh_dimensionless/deltaf_table
+/models/iS3D/results/
+/models/iS3D/results_test/
+/models/iS3D/input/
+/models/iS3D/surface.dat
+/models/iS3D/average_thermodynamic_quantities.dat
+/models/events.dat
+/models/results
+/music_input
+
+# Generated output from the getting-started walkthrough.
+/example-output/
+/install.log
+
+# Generated statistics pilots and per-campaign OSG selections.
+/models/analysis/stats_pilots/
+/models/analysis/stats_*.csv
+/models/analysis/osg_vs_nersc.png
+/osg/manifest*.txt
+
+# Generated personal NERSC configuration (paths/account specific to each user).
+/config/users/
+
+# Rebuildable iS3D documentation intermediates; keep TeX sources and reference PDFs.
+/models/iS3D/documentation/**/*.aux
+/models/iS3D/documentation/**/*.log
+/models/iS3D/documentation/**/*.toc
+/models/iS3D/documentation/**/*.lof
+/models/iS3D/documentation/**/*.lot
+/models/iS3D/documentation/**/*.fls
+/models/iS3D/documentation/**/*.fdb_latexmk
+/models/iS3D/documentation/**/*.synctex.gz

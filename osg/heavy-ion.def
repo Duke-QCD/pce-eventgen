@@ -1,0 +1,170 @@
+Bootstrap: docker
+From: hub.opensciencegrid.org/htc/rocky:9
+
+# =============================================================================
+# heavy-ion.def  —  event-generation container for OSPool
+#
+#   Pipeline: MUSIC (MUSIChydro) -> iS3D -> SMASH, driven by run-events.
+#   TRENTo is intentionally ABSENT: initial conditions are generated on NERSC
+#   and shipped per-event, so trento is never invoked inside the job.
+#
+#   Layout mirrors a NERSC profile's nersc_paths.sh, with /opt standing in for
+#   the software root and /opt/data for the data root. run-events is unchanged;
+#   container_paths.sh supplies the HIC_* variables it expects.
+#
+#   BUILD CONTEXT: assemble a directory containing this .def plus every file/dir
+#   referenced in %files (paths below are relative to where you run the build):
+#
+#     build/
+#       heavy-ion.def
+#       run-events  run-events-wrapper  iS3D_OSCAR.py  container_paths.sh  config.yaml
+#       music-hydro/   iS3D/   smash/            <- models/music-hydro, models/iS3D, models/SMASH
+#       data/iS3D/     data/EOS/                 <- baked physics data (~1 GB)
+#
+#   Stage iS3D_OSCAR.py from models/iS3D/iS3D_OSCAR.py in this checkout.
+#
+#   See osg/README.md for the full context, preflight and current AP build policy.
+#   With the AP build environment prepared as documented there:
+#     apptainer build --ignore-proot heavy-ion-v1.sif heavy-ion.def
+#   Push the .sif to your OSDF origin and reference it as:
+#     container_image = osdf:///ospool/apXX/data/<user>/heavy-ion-v1.sif
+#   (version the filename -v1, -v2, ... — OSDF caches by name.)
+# =============================================================================
+
+%files
+    # --- scripts: <build-context path>  <path inside image> ---
+    run-events                /opt/hic/bin/run-events
+    run-events-wrapper        /opt/hic/bin/run-events-wrapper
+    iS3D_OSCAR.py             /opt/hic/bin/iS3D_OSCAR.py
+    container_paths.sh        /opt/hic/container_paths.sh
+    config.yaml               /opt/hic/config/config.yaml
+
+    # --- source trees (copied from this repository into the build context) ---
+    music-hydro               /opt/src/music-hydro
+    iS3D                      /opt/src/iS3D
+    smash                     /opt/src/smash
+
+    # --- baked read-only physics data (~1 GB total) ---
+    data/iS3D                 /opt/data/iS3D
+    data/EOS                  /opt/data/EOS
+
+%post
+    set -eux
+
+    # ---- portable CPU baseline (CRITICAL for OSPool) ---------------------
+    # OSPool worker CPUs are heterogeneous. By default these builds emit AVX/
+    # AVX2 instructions tuned to the build host, which SIGILL ("Illegal
+    # instruction", core dump) on older worker CPUs that lack them. Pin every
+    # compile to x86-64-v2 (SSE4.2-era), supported by essentially all OSPool
+    # nodes. Most cmake/configure builds honor CFLAGS/CXXFLAGS on first config.
+    # (If a job ever still SIGILLs on a truly ancient node, drop to -march=x86-64.)
+    export CFLAGS="-march=x86-64-v2 -mtune=generic"
+    export CXXFLAGS="-march=x86-64-v2 -mtune=generic"
+
+    # ---- system toolchain & libraries ------------------------------------
+    # EL9 provides: cmake 3.20+ (>=3.16 ok), gsl 2.6 (>=2.0 ok),
+    #               eigen3 3.4 (>=3.0 ok).  All SMASH reqs satisfied.
+    dnf -y install epel-release
+    dnf -y install \
+        gcc gcc-c++ gcc-gfortran make cmake git which file \
+        gsl-devel eigen3-devel zstd \
+        python3 python3-pip python3-devel \
+        boost-devel hdf5-devel \
+        openblas-devel lapack-devel   # BLAS/LAPACK: portable stand-in for NERSC's
+                                      # fast-mkl-amd, in case a code links it.
+                                      # boost/hdf5: insurance for MUSIC/iS3D.
+    pip3 install --no-cache-dir numpy h5py
+    dnf clean all
+    mkdir -p /opt/src
+
+    # ---- Pythia 8.309 (SMASH dependency; not packaged on EL9) -------------
+    # Pinned exactly to SMASH's requirement. If the AP blocks outbound https in
+    # %post, stage pythia8309.tgz into the build context and untar it instead.
+    cd /opt/src
+    curl -fsSL -o pythia8309.tgz https://gitlab.com/Pythia8/releases/-/archive/pythia8309/releases-pythia8309.tar.gz
+    mkdir pythia8309
+    tar xf pythia8309.tgz --strip-components=1 -C pythia8309
+    cd pythia8309
+    ./configure --prefix=/opt/pythia8 --cxx-common='-std=c++17 -O3 -fPIC -pthread -march=x86-64-v2 -mtune=generic'
+    make -j"${HIC_BUILD_JOBS:-2}"
+    make install
+
+    # ---- build MUSIC -----------------------------------------------------
+    cd /opt/src/music-hydro
+    rm -rf build && mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt -DMUSIC_INSTALL_PCE_DATA=OFF
+    make -j"${HIC_BUILD_JOBS:-2}"
+    make install
+    # ---- build iS3D ------------------------------------------------------
+    # The source honors the selected compiler and installs to bin/ and lib/.
+    cd /opt/src/iS3D
+    rm -rf build && mkdir build && cd build
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt -DIS3D_INSTALL_DATA=OFF
+    make -j"${HIC_BUILD_JOBS:-2}"
+    make install
+    # container_paths.sh uses /opt/bin/iS3D; production data remain in /opt/data.
+
+    # ---- build SMASH (run from build tree; no make install) --------------
+    # The workflow uses unmodified upstream SMASH commit 0985d6b3
+    # (SMASH-3.0-1-g0985d6b3), staged as a git clone of the models/SMASH
+    # submodule. Its upstream particle/decay tables include sigma; sigma's
+    # exclusion at iS3D particlization is separate.
+    # VERIFY after build: the OSCAR output header must read SMASH-3.0-1-g0985d6b3.
+    cd /opt/src/smash
+    git config --global --add safe.directory /opt/src/smash
+    test "$(git rev-parse HEAD)" = "0985d6b32fb801404c933d70c86c23759d60ff1f"
+    git describe --tags        # expect: SMASH-3.0-1-g0985d6b3
+    python3 - <<'PY'
+from pathlib import Path
+import sys
+def records(name):
+    return [line.split('#', 1)[0].split() for line in Path('input', name).read_text().splitlines()]
+if not any(row and row[0] == 'σ' for row in records('particles.txt')) and any('σ' in row for row in records('decaymodes.txt')):
+    sys.exit('SMASH tables disagree: stage matching production particle and decay tables before building.')
+PY
+    rm -rf build && mkdir build && cd build
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -march=x86-64-v2 -mtune=generic' \
+        -DPythia_CONFIG_EXECUTABLE=/opt/pythia8/bin/pythia8-config
+    make -j"${HIC_BUILD_JOBS:-2}"
+    mkdir -p /opt/SMASH
+    cp -a /opt/src/smash/build /opt/SMASH/build
+    # Expected by container_paths.sh: /opt/SMASH/build/smash
+    # Particle and decay tables are embedded during compilation.
+
+    # ---- finalize scripts ------------------------------------------------
+    chmod +x /opt/hic/bin/run-events /opt/hic/bin/run-events-wrapper
+
+    # ---- make the loader find the engine shared libs ---------------------
+    # Apptainer overrides LD_LIBRARY_PATH at runtime (sets /.singularity.d/libs),
+    # so %environment can't reliably point the loader at libmusic.so / libpythia8.so.
+    # Register their directories with the system loader instead — robust regardless
+    # of the runtime environment. (This is why container_paths.sh's LD_LIBRARY_PATH
+    # is moot inside Apptainer; harmless on NERSC.)
+    printf '/opt/lib\n/opt/pythia8/lib\n' > /etc/ld.so.conf.d/heavy-ion.conf
+    ldconfig
+
+    # ---- slim the image before packaging ---------------------------------
+    # All runtime artifacts already live outside /opt/src: binaries at
+    # /opt/bin/MUSIChydro, /opt/bin/iS3D, /opt/SMASH/build; libmusic.so at
+    # /opt/lib; Pythia at /opt/pythia8; physics
+    # data in /opt/data; and the SMASH version string is compiled into the
+    # binary (so dropping .git keeps provenance). Removing /opt/src deletes the
+    # duplicate SMASH build tree, all source + object files, and Pythia source,
+    # which shrinks the rootfs and stops mksquashfs from running out of memory
+    # (the exit-139 segfault) when building the .sif on the access point.
+    rm -rf /opt/src
+    pip3 cache purge 2>/dev/null || true
+    dnf clean all || true
+
+%environment
+    # POSIX `.` (sh) — Apptainer %environment is not bash
+    . /opt/hic/container_paths.sh
+
+%runscript
+    exec /opt/hic/bin/run-events-wrapper "$@"
+
+%labels
+    Pipeline MUSIC-iS3D-SMASH
+    Purpose  OSPool-event-generation

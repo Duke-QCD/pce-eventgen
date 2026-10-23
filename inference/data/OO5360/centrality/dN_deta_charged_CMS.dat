@@ -1,0 +1,20 @@
+# https://arxiv.org/abs/2606.02285; CMS-HIN-25-010, Figure 5a
+# OO sqrt(sNN)=5.36 TeV; primary charged hadrons, |eta|<0.5; extrapolated to pT=0
+# HF transverse-energy centrality; original 5%-wide bins through 70%
+# Vector-digitized central values and total systematic band; statistical uncertainties <0.1% ignored
+# No bin-to-bin covariance available. Values rounded below source-vector precision.
+# cent_low cent_high cent_mid val err
+0 5 2.5 134.96568 3.9573549
+5 10 7.5 106.89926 2.7834905
+10 15 12.5 90.914471 2.5770484
+15 20 17.5 77.852898 2.3761493
+20 25 22.5 66.426483 2.133803
+25 30 27.5 56.679084 1.9955379
+30 35 32.5 48.122891 1.8102973
+35 40 37.5 40.688507 1.9384469
+40 45 42.5 34.318157 1.509897
+45 50 47.5 28.684205 1.7527137
+50 55 52.5 23.825921 1.6284236
+55 60 57.5 19.574687 1.4617306
+60 65 62.5 15.925194 1.1172513
+65 70 67.5 12.648836 1.2167304

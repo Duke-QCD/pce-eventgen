@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# WARNING(PCE): legacy surface_eps_* merger. MUSIC now writes surface.dat,
+# so this naming/merge step must be adjusted before use with the PCE workflow.
+# The matching old multi-surface job generator also needs adaptation.
+
+
 folder_name=$1
 echo Moving all the results into $folder_name ... 
 

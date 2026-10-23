@@ -1,0 +1,6 @@
+#?
+#cuts ?
+#cent_low cent_high cent_mid val err
+0 5 2.5 0.27 0.03
+20 40 30 0.085 0.014
+40 60 50 0.032 0.006

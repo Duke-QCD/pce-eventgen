@@ -45,10 +45,6 @@ int Evolve::EvolveIt(SCGrid &arena_prev, SCGrid &arena_current,
     int freezeout_flag          = DATA.doFreezeOut;
     int freezeout_lowtemp_flag  = DATA.doFreezeOut_lowtemp;
 
-    // Output information about the hydro parameters 
-    // in the format of a C header file
-    //if (DATA.output_hydro_params_header || DATA.outputEvolutionData == 1)
-    //    grid_info.Output_hydro_information_header();
 
     if (DATA.store_hydro_info_in_memory == 1) {
         hydro_info_ptr.set_grid_infomatioin(DATA);
@@ -75,7 +71,6 @@ int Evolve::EvolveIt(SCGrid &arena_prev, SCGrid &arena_current,
                            arena_current.nY(),
                            arena_current.nEta());
 
-    //int T_max;
     for (int it = 0; it <= itmax; it++) {
  
         tau = tau0 + dt*it;
@@ -131,8 +126,6 @@ int Evolve::EvolveIt(SCGrid &arena_prev, SCGrid &arena_current,
              }
         }
 
-        grid_info.output_momentum_anisotropy_vs_tau(
-                                            tau, -0.5, 0.5, *ap_current);
         if (DATA.Initial_profile == 13) {
             grid_info.output_average_phase_diagram_trajectory(
                                             tau, -0.5, 0.5, *ap_current);
@@ -155,11 +148,6 @@ int Evolve::EvolveIt(SCGrid &arena_prev, SCGrid &arena_current,
             grid_info.monitor_fluid_cell(*ap_current, 100, 100, 0, tau);
         }
 
-	//for (int ieta = 0; ieta < ap_current->nEta(); ieta++)
-	  //for (int ix   = 0; ix   < ap_current->nX();   ix++  )
-	  //	for (int iy   = 0; iy   < ap_current->nY();   iy++  ) {
-	
-	  //	  if (std::isnan((*ap_current)(ix,iy,ieta).epsilon)) {std::cout << "WARNING" << std::endl;}}
 
         /* execute rk steps */
         // all the evolution are at here !!!
@@ -257,8 +245,6 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
     const int ny = arena_current.nY();
 
     std::stringstream strs_name;
-    //strs_name << "surface_eps_" << std::setprecision(4) << epsFO*hbarc
-    //          << "_" << thread_id << ".dat";
     strs_name << "surface.dat";
 
     std::ofstream s_file;
@@ -291,7 +277,12 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
     const double DY   = fac_y*DATA.delta_y;
     const double DETA = fac_eta*DATA.delta_eta;
 
-    // initialize Cornelius
+    // WARNING(PCE): this replaced the original epsFO threshold for every EOS.
+    // Non-PCE EOS models inherit get_T_ratio() == 1 and cannot recover their
+    // original freeze-out criterion here. Restore an EOS-specific criterion
+    // before reusing this finder with EOS_to_use other than 18.
+    // PCE: locate the isosurface T/T_switch(gamma_l) = 1. The cube stores
+    // this ratio rather than energy density, so Cornelius uses level 1.0.
     double lattice_spacing[4] = {DTAU, DX, DY, DETA};
     std::shared_ptr<Cornelius> cornelius_ptr(new Cornelius());
     cornelius_ptr->init(dim, 1.0, lattice_spacing);
@@ -860,7 +851,8 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
                 Wyeta_center   = Wmunu_regulated[2][3];
                 Wetaeta_center = Wmunu_regulated[3][3];
 
-		// proper time
+                // PCE: interpolate the advected fluid clock to this surface
+                // element; it is distinct from the geometric tau_center.
                 cube[0][0][0][0] = arena_freezeout(ix      , iy      , ieta        ).proper_tau;
                 cube[0][0][1][0] = arena_freezeout(ix      , iy+fac_y, ieta        ).proper_tau;
                 cube[0][1][0][0] = arena_freezeout(ix+fac_x, iy      , ieta        ).proper_tau;
@@ -881,7 +873,8 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
                     Util::four_dimension_linear_interpolation(
                                 lattice_spacing, x_fraction, cube);
 
-		// energy
+                // PCE: interpolate energy too, since T/T_switch = 1 does not
+                // correspond to a single freeze-out energy density.
                 cube[0][0][0][0] = arena_freezeout(ix      , iy      , ieta        ).epsilon;
                 cube[0][0][1][0] = arena_freezeout(ix      , iy+fac_y, ieta        ).epsilon;
                 cube[0][1][0][0] = arena_freezeout(ix+fac_x, iy      , ieta        ).epsilon;
@@ -919,9 +912,10 @@ int Evolve::FindFreezeOutSurface_Cornelius_XY(double tau, int ieta,
 		const double light_fugacity = eos.get_light_fugacity(proper_tau_center);
 		const double strange_fugacity = eos.get_strange_fugacity(proper_tau_center);
 
-		//tau_file << std::scientific << std::setprecision(10) << proper_tau_center << "  " << x_center << "  " << y_center << std::endl;
 
-                // finally output results !!!!
+                // PCE surface contract: gamma_l and gamma_s follow the ten
+                // shear components (columns 29/30, or binary indices 28/29).
+                // Keep this order synchronized with the iS3D surface reader.
                 if (surface_in_binary) {
                     float array[] = {static_cast<float>(tau_center),
                                      static_cast<float>(x_center),
@@ -1043,13 +1037,6 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
     const int ny = arena_current.nY();
 
     std::stringstream strs_name;
-    //if (DATA.boost_invariant == 0) {
-    //    strs_name << "surface_eps_" << std::setprecision(4) << epsFO*hbarc
-    //              << "_" << thread_id << ".dat";
-    //} else {
-    //    strs_name << "surface_eps_" << std::setprecision(4) << epsFO*hbarc
-    //              << ".dat";
-    //}
     strs_name << "surface.dat";
     
     std::ofstream s_file;
@@ -1077,8 +1064,13 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
     const double DY   = fac_y*DATA.delta_y;
     const double DETA = fac_eta*DATA.delta_eta;
 
-    if (DATA.tau_eq_l == 0 and DATA.tau_eq_s == 0) {epsFO = eos.get_T2e(0.158,0,DATA.tau0);}
-    else {epsFO = eos.get_T2e(0.260,0,DATA.tau0);}
+    // WARNING(PCE): the initial-time surface overrides the requested epsFO
+    // with the composition-dependent switching temperature. Generic
+    // constant-energy/temperature scans need a separate criterion.
+    // The same light/strange switching prescription is used by get_T_ratio.
+    double light_fugacity = eos.get_light_fugacity(DATA.tau0);
+    double strange_fugacity = eos.get_strange_fugacity(DATA.tau0);
+    epsFO = eos.get_T2e(0.158*std::pow(strange_fugacity,0.5) + 0.170*(std::pow(light_fugacity,0.5)-std::pow(strange_fugacity,0.5)) + 0.260*(1-std::pow(light_fugacity,0.5)),0,DATA.tau0);
 
     double eta = (DATA.delta_eta)*ieta - (DATA.eta_size)/2.0;
     for (int ix = 0; ix < nx - fac_x; ix += fac_x) {
@@ -1111,7 +1103,7 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
             // baryon density rho_b
             const double rhob_center = arena_current(ix, iy, ieta).rhob;
 
-	    // proper time
+            // PCE: this equal-tau surface uses the clock in the current cell.
 	    const double proper_tau_center = arena_current(ix, iy, ieta).proper_tau;
 
             // baryon diffusion current
@@ -1188,7 +1180,8 @@ void Evolve::FreezeOut_equal_tau_Surface_XY(double tau, int ieta,
             double light_fugacity = eos.get_light_fugacity(proper_tau_center);
 	    double strange_fugacity = eos.get_strange_fugacity(proper_tau_center);
 	    
-            // finally output results
+            // Match the PCE surface layout used by the Cornelius writers:
+            // gamma_l, gamma_s follow the shear tensor and precede bulk Pi.
             if (surface_in_binary) {
                 float array[] = {static_cast<float>(tau_center),
                                  static_cast<float>(x_center),
@@ -1271,8 +1264,6 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
         double epsFO = epsFO_list[i_freezesurf]/hbarc;
 	
         std::stringstream strs_name;
-        //strs_name << "surface_eps_" << std::setprecision(4) << epsFO*hbarc
-        //          << ".dat";
         strs_name << "surface.dat";
        
         std::ofstream s_file;
@@ -1311,7 +1302,9 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
         double lattice_spacing[3] = {DTAU, DX, DY};
         double x_fraction[2][3];
 	
-        // initialize Cornelius
+        // WARNING(PCE): epsFO no longer sets this surface. Non-PCE EOS models
+        // return a constant get_T_ratio() and need their old criterion restored.
+        // PCE: the boost-invariant surface also uses T/T_switch(gamma_l) = 1.
         const int dim = 3;
         std::shared_ptr<Cornelius> cornelius_ptr(new Cornelius());
         cornelius_ptr->init(dim, 1.0, lattice_spacing);
@@ -1343,15 +1336,6 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
 			  if((eos.get_T_ratio(arena_current(ix,iy,0))-1.0)
                             *(eos.get_T_ratio(arena_freezeout(ix+fac_x,iy+fac_y,0))-1.0)>0.)
 
-		// double TFO = eos.get_temperature(epsFO,0,0.6);
-		// if ((eos.get_temperature(arena_current(ix+fac_x,iy+fac_y,0).epsilon,0,0.6)-TFO)
-                //     *(eos.get_temperature(arena_freezeout(ix,iy,0).epsilon,0,0.6)-TFO) > 0.)
-                //     if ((eos.get_temperature(arena_current(ix+fac_x,iy,0).epsilon,0,0.6)-TFO)
-                //         *(eos.get_temperature(arena_freezeout(ix,iy+fac_y,0).epsilon,0,0.6)-TFO) > 0.)
-                //         if ((eos.get_temperature(arena_current(ix,iy+fac_y,0).epsilon,0,0.6)-TFO)
-                //             *(eos.get_temperature(arena_freezeout(ix+fac_x,iy,0).epsilon,0,0.6)-TFO) > 0.)
-                //             if ((eos.get_temperature(arena_current(ix,iy,0).epsilon,0,0.6)-TFO)
-                //                 *(eos.get_temperature(arena_freezeout(ix+fac_x,iy+fac_y,0).epsilon,0,0.6)-TFO) > 0.)
                                     intersect = 0;
                 
                 if (intersect == 0) continue;
@@ -1710,7 +1694,8 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                     Wetaeta_center = Wmunu_regulated[3][3];
 
 
-		    // proper time
+                    // PCE: interpolate the local chemical clock at the surface
+                    // before evaluating its EOS state and fugacities.
                     cube[0][0][0] = arena_freezeout(ix      , iy      , 0).proper_tau;
                     cube[0][0][1] = arena_freezeout(ix      , iy+fac_y, 0).proper_tau;
                     cube[0][1][0] = arena_freezeout(ix+fac_x, iy      , 0).proper_tau;
@@ -1723,7 +1708,7 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                         Util::three_dimension_linear_interpolation(
                                         lattice_spacing, x_fraction, cube));
 
-		    // energy
+                    // PCE: interpolate energy at the ratio-defined surface.
 		    cube[0][0][0] = arena_freezeout(ix      , iy      , 0).epsilon;
 		    cube[0][0][1] = arena_freezeout(ix      , iy+fac_y, 0).epsilon;
 		    cube[0][1][0] = arena_freezeout(ix+fac_x, iy      , 0).epsilon;
@@ -1756,7 +1741,9 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
 		    double strange_fugacity = eos.get_strange_fugacity(proper_tau_center);
 		    
   		    
-                    // finally output results !!!!
+                    // PCE layout: gamma_l/gamma_s are columns 29/30; binary
+                    // records always contain 36 floats including bulk/charge
+                    // fields. Text appends those latter fields conditionally.
                     if (surface_in_binary) {
                         float array[] = {static_cast<float>(tau_center),
                                          static_cast<float>(x_center),
@@ -1815,11 +1802,11 @@ int Evolve::FindFreezeOutSurface_boostinvariant_Cornelius(
                                << Wyy_center << " " << Wyeta_center << " " 
                                << Wetaeta_center << " " << light_fugacity << " "
 			       << strange_fugacity << " ";
-                        if(DATA.turn_on_bulk)   // 29th column
+                        if(DATA.turn_on_bulk)   // column 31 when enabled
                             s_file << pi_b_center << " " ;
-                        if(DATA.turn_on_rhob)   // 30th column
+                        if(DATA.turn_on_rhob)   // next column after optional bulk
                             s_file << rhob_center << " " ;
-                        if(DATA.turn_on_diff)   // 31-34th column
+                        if(DATA.turn_on_diff)   // final four optional columns
                             s_file << qtau_center << " " << qx_center << " " 
                                    << qy_center << " " << qeta_center << " " ;
                         s_file << std::endl;
@@ -1895,6 +1882,11 @@ void Evolve::regulate_Wmunu(const double u[], const double Wmunu[4][4],
 }
 
 void Evolve::initialize_freezeout_surface_info() {
+    // WARNING(PCE): legacy TFO/energy lists below still control loop counts,
+    // but the Cornelius finders now use T/T_switch = 1 and all write surface.dat.
+    // Multiple thresholds therefore do not produce distinct requested surfaces.
+    // Adjust the criterion and output naming before reviving constant-T/energy
+    // scans or N_freeze_out > 1; these settings are not a PCE switching scan.
     if (DATA.useEpsFO == 0) {
         const double e_freeze = eos.get_T2e(DATA.TFO, 0.0, 1e10)*Util::hbarc;
         n_freeze_surf = 1;

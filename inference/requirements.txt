@@ -1,0 +1,6 @@
+# Direct dependencies from the environment used to validate this import (Python 3.11).
+# The sampler and PCA+GP implementation live in inference.py; no STAT/Surmise needed.
+numpy==1.26.4
+scipy==1.14.1
+matplotlib==3.10.8
+scikit-learn==1.8.0

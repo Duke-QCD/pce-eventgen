@@ -27,11 +27,16 @@ int main(int argc, char *argv[]) {
         music_hydro.run_hydro();
     }
 
+    // WARNING(PCE): these modes enter MUSIC's legacy internal spectra/decay
+    // workflow, not the external iS3D -> SMASH production chain. Before reuse,
+    // review the light-only spectrum ansatz; see freeze_pseudo.cpp.
     if (running_mode == 1 || running_mode == 3 || running_mode == 4
             || running_mode == 13 || running_mode == 14) {
         music_hydro.run_Cooper_Frye();
     }
 
+    // WARNING(PCE): modes 71/73 retain fixed-clock equilibrium-style diagnostic
+    // scans. Their clocks/entropy handling need adjustment for PCE comparisons.
     if (running_mode == 71) {
         music_hydro.check_eos();
     }

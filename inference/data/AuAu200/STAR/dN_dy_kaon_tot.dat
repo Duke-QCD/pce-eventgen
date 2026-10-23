@@ -1,0 +1,14 @@
+#https://arxiv.org/pdf/0808.2041v2.pdf
+#cuts |y| < 0.1; STAR Au+Au sqrt(s_NN)=200 GeV; integrated dN/dy from Table VIII
+#errors are quoted table errors: quadratic sum of statistical and systematic uncertainties
+#kaon_tot = K- + K+; uncertainty is quadrature sum, ignoring covariance
+#cent_low cent_high cent_mid val err
+0 5 2.5 100.8 8.98276
+5 10 7.5 80.6 6.57647
+10 20 15 58.7 4.45533
+20 30 25 40.2 2.82843
+30 40 35 26.8 1.83848
+40 50 45 17.06 1.1245
+50 60 55 10.59 0.67897
+60 70 65 5.87 0.374833
+70 80 75 2.79 0.183848

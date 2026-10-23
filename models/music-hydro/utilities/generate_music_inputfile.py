@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+# WARNING(PCE): legacy reference workflow; it selects a non-PCE EOS, scans
+# multiple energy-density surfaces, and generates internal MUSIC spectra jobs.
+# Adjust EOS/clock inputs, freeze-out criteria and surface.dat naming before
+# reuse with this fork. It is not the current hydro -> iS3D -> SMASH launcher.
+
+
 import sys
 from os import path
 from music_parameters_dict import *

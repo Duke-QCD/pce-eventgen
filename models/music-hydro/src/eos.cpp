@@ -28,6 +28,7 @@ EOS::EOS(const InitData &DATA_in) : eos_id(DATA_in.whichEOS), DATA(DATA_in) {
     } else if (eos_id == 17) {
         eos_ptr = std::unique_ptr<EOS_BEST> (new EOS_BEST ());
     } else if (eos_id == 18) {
+        // Custom PCE EOS needs the initial fugacities and relaxation times.
         eos_ptr = std::unique_ptr<EOS_PCE> (new EOS_PCE (DATA));
     } else {
         std::cout << "No EOS for eos_id = " << std::endl;

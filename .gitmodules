@@ -1,0 +1,3 @@
+[submodule "models/SMASH"]
+	path = models/SMASH
+	url = https://github.com/smash-transport/smash.git

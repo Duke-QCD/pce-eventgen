@@ -1,0 +1,15 @@
+#STAR Phys.Rev.C 79 (2009) 034909
+#arXiv:0808.2041[nucl-ex]
+#AuAu200, corrected dNch/deta, |eta|<0.5 (TPC), Table 2 (MC Glauber, sigma_pp=41 mb)
+#centrality: uncorrected dNch/deta |eta|<0.5 (TPC), 9 bins
+#err = total (stat (+) sys)
+#cent_low cent_high cent_mid val err
+0 5 2.5 691 49
+5 10 7.5 558 40
+10 20 15 421 30
+20 30 25 287 20
+30 40 35 195 14
+40 50 45 126 9
+50 60 55 78 6
+60 70 65 45 3
+70 80 75 22 2

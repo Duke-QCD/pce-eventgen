@@ -1,3 +1,7 @@
+# WARNING(PCE): archived makefile; its source list does not contain the
+# current split EOS implementation including eos_PCE.cpp. Adjust the source
+# lists/dependencies before reuse with this fork; the current build uses CMake.
+
 # ===========================================================================
 #  Makefile for MUSIC                                 Chun Shen Dec. 12, 2014
 # ===========================================================================

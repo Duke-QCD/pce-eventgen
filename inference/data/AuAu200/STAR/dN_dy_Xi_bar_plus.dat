@@ -1,0 +1,11 @@
+#https://arxiv.org/pdf/nucl-ex/0606014
+#cuts |y| < 0.75 for anti-Xi+; STAR Au+Au sqrt(s_NN)=200 GeV
+#STAR Au+Au sqrt(s_NN)=200 GeV; integrated dN/dy from Table I
+#single err column is sqrt(stat^2 + sys^2) from the two uncertainties quoted in the table
+#the paper notes alternate exponential fits would give yields higher by about 5-6% on average; that model dependence is not included here
+#cent_low cent_high cent_mid val err
+0 5 2.5 1.83 0.206155
+10 20 15 1.14 0.0894427
+20 40 30 0.62 0.0360555
+40 60 50 0.23 0.0223607
+60 80 70 0.061 0.00447214

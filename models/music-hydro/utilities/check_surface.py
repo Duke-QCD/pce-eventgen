@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+# WARNING(PCE): obsolete surface validator: the 28-field filter below does
+# not accept the added gamma_l/gamma_s columns or optional bulk/charge fields.
+# Adjust its schema before use; it can discard valid current PCE surfaces.
+
+
 count_err = 0
 count_lines = 0
 f_regulated = open('surface_regulated.dat', 'w')

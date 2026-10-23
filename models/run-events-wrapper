@@ -1,7 +1,45 @@
 #!/bin/bash
+# Select this runner and its data without changing the event working directory.
+set -e
+wrapper_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export VIRTUAL_ENV="$(readlink -e "$(dirname "${BASH_SOURCE[0]}")/..")"
-export PATH="$VIRTUAL_ENV/bin:$PATH"
-export XDG_DATA_HOME="$VIRTUAL_ENV/share"
+# Production NERSC binaries need this GCC runtime in batch jobs. Local and
+# container installations use their own compiler/runtime environment.
+if [[ -n "${NERSC_HOST:-}" && -z "${APPTAINER_CONTAINER:-}${SINGULARITY_CONTAINER:-}" ]]; then
+    runtime_module="${HIC_RUNTIME_GCC_MODULE-gcc-native/14}"
+    if [[ -n "$runtime_module" ]]; then
+        if ! command -v module >/dev/null 2>&1; then
+            for module_init in /opt/cray/pe/lmod/lmod/init/bash /usr/share/lmod/lmod/init/bash /etc/profile.d/lmod.sh /etc/profile.d/z00_lmod.sh; do
+                if [[ -r "$module_init" ]]; then
+                    source "$module_init"
+                    break
+                fi
+            done
+        fi
+        if command -v module >/dev/null 2>&1; then
+            module load "$runtime_module" || echo "[run-events-wrapper] Could not load $runtime_module; check the model runtime libraries." >&2
+        else
+            echo "[run-events-wrapper] NERSC module command unavailable; could not load $runtime_module." >&2
+        fi
+    fi
+fi
 
-exec run-events "$@"
+if [[ "$(basename "$wrapper_dir")" == bin ]]; then
+    install_prefix="$(cd "$wrapper_dir/.." && pwd)"
+    export PATH="$install_prefix/bin:$PATH"
+    export XDG_DATA_HOME="$install_prefix/share"
+    export HIC_SOFTWARE_ROOT="${HIC_SOFTWARE_ROOT:-$install_prefix}"
+    if [[ -f "$install_prefix/pyvenv.cfg" ]]; then
+        export VIRTUAL_ENV="$install_prefix"
+    fi
+    is3d_paths="$install_prefix/share/iS3D/paths.sh"
+else
+    # Running models/run-events-wrapper directly uses the active Python env.
+    export HIC_CODE_HOME="${HIC_CODE_HOME:-$(cd "$wrapper_dir/.." && pwd)}"
+    is3d_paths="$wrapper_dir/iS3D/paths.sh"
+fi
+
+if [[ -f "$is3d_paths" ]]; then
+    source "$is3d_paths"
+fi
+exec "$wrapper_dir/run-events" "$@"

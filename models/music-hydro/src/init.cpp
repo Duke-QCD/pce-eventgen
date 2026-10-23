@@ -165,6 +165,11 @@ void Init::print_num_of_threads() {
 
 //! This is a shell function to initial hydrodynamic fields
 void Init::InitTJb(SCGrid &arena_prev, SCGrid &arena_current) {
+    // WARNING(PCE): only profiles 8, 9/91/92, 11 and 666 currently seed the
+    // fluid clock at tau0. Gubser/1+1D, source-driven, AMPT, JETSCAPE and UMN
+    // paths leave it at the Cell_small default of zero. Define/initialize the
+    // clock in those paths before using them with EOS_to_use 18; inheriting
+    // the old hydrodynamic initial conditions does not initialize PCE chemistry.
     if (DATA.Initial_profile == 0) {
         // Gubser flow test
         music_message.info(" Perform Gubser flow test ... ");
@@ -250,15 +255,7 @@ void Init::InitTJb(SCGrid &arena_prev, SCGrid &arena_current) {
         for (int ieta = 0; ieta < arena_current.nEta(); ieta++) {
             initial_cylindrical(ieta, arena_prev, arena_current);
         }
-    } // else if (DATA.Initial_profile == 667) {
-    //     // Gubser flow test
-    //     music_message.info(" Bjorken initial condition ... ");
-    //     music_message.info(" ----- information on initial distribution -----");
-        
-    //     #pragma omp parallel for
-    //     for (int ieta = 0; ieta < arena_current.nEta(); ieta++) {
-    //         initial_Bjorken(ieta, arena_prev, arena_current);
-    // }
+    }
     music_message.info("initial distribution done.");
 }
 
@@ -502,13 +499,15 @@ void Init::initial_IPGlasma_XY(int ieta, SCGrid &arena_prev,
             } else {
                 double local_sd = (temp_profile_ed[ix][iy]*DATA.sFactor
                                    *eta_envelop_ed);
-                epsilon = eos.get_s2e(local_sd, rhob, -1); //DATA.tau0); Revert this!!!
+                // PCE: invert entropy at the initial composition, using tau0.
+                epsilon = eos.get_s2e(local_sd, rhob, DATA.tau0);
             }
             if (epsilon < 1e-10)
                 epsilon = 1e-10;
 
             arena_current(ix, iy, ieta).epsilon = epsilon;
             arena_current(ix, iy, ieta).rhob = rhob;
+	    // PCE: start the local chemical clock at the hydro initialization time.
 	    arena_current(ix, iy, ieta).proper_tau = DATA.tau0;
 
             arena_current(ix, iy, ieta).u[0] = temp_profile_utau[ix][iy];
@@ -630,13 +629,15 @@ void Init::initial_IPGlasma_XY_with_pi(int ieta, SCGrid &arena_prev,
             } else {
                 double local_sd = (temp_profile_ed[idx]*DATA.sFactor
                                    *eta_envelop_ed);
-                epsilon = eos.get_s2e(local_sd, rhob, -1); //DATA.tau0); Revert this!!!
+                // PCE: invert entropy at the initial composition, using tau0.
+                epsilon = eos.get_s2e(local_sd, rhob, DATA.tau0);
             }
             if (epsilon < 1e-10)
                 epsilon = 1e-10;
 
             arena_current(ix, iy, ieta).epsilon = epsilon;
             arena_current(ix, iy, ieta).rhob = rhob;
+	    // PCE: start the local chemical clock at the hydro initialization time.
 	    arena_current(ix, iy, ieta).proper_tau = tau0;
 
             if (DATA.Initial_profile == 9 || DATA.Initial_profile == 91) {
@@ -672,102 +673,6 @@ void Init::initial_IPGlasma_XY_with_pi(int ieta, SCGrid &arena_prev,
         }
     }
 
-    // for (int ix = 0; ix < nx; ix++) {
-    //     for (int iy = 0; iy < ny; iy++) {
-    //         int idx = iy + ix*ny;
-    //         std::getline(profile, dummy);
-    //         std::stringstream ss(dummy);
-    //         ss >> dummy1 >> dummy2 >> dummy3
-    //            >> density >> utau >> ux >> uy >> ueta
-    //            >> pitautau >> pitaux >> pitauy >> pitaueta
-    //            >> pixx >> pixy >> pixeta >> piyy >> piyeta >> pietaeta;
-    //         temp_profile_ed    [idx] = density;
-    //         temp_profile_ux    [idx] = ux;
-    //         temp_profile_uy    [idx] = uy;
-    //         temp_profile_ueta  [idx] = ueta*tau0;
-    //         temp_profile_utau  [idx] = sqrt(1. + ux*ux + uy*uy + ueta*ueta);
-    //         temp_profile_pixx  [idx] = pixx*DATA.sFactor;
-    //         temp_profile_pixy  [idx] = pixy*DATA.sFactor;
-    //         temp_profile_pixeta[idx] = pixeta*tau0*DATA.sFactor;
-    //         temp_profile_piyy  [idx] = piyy*DATA.sFactor;
-    //         temp_profile_piyeta[idx] = piyeta*tau0*DATA.sFactor;
-
-    //         utau = temp_profile_utau[idx];
-    //         ueta = ueta*tau0;
-    //         temp_profile_pietaeta[idx] = (
-    //             (2.*(  ux*uy*temp_profile_pixy[idx]
-    //                  + ux*ueta*temp_profile_pixeta[idx]
-    //                  + uy*ueta*temp_profile_piyeta[idx])
-    //              - (utau*utau - ux*ux)*temp_profile_pixx[idx]
-    //              - (utau*utau - uy*uy)*temp_profile_piyy[idx])
-    //             /(utau*utau - ueta*ueta));
-    //         temp_profile_pitaux  [idx] = (1./utau
-    //             *(  temp_profile_pixx[idx]*ux
-    //               + temp_profile_pixy[idx]*uy
-    //               + temp_profile_pixeta[idx]*ueta));
-    //         temp_profile_pitauy  [idx] = (1./utau
-    //             *(  temp_profile_pixy[idx]*ux
-    //               + temp_profile_piyy[idx]*uy
-    //               + temp_profile_piyeta[idx]*ueta));
-    //         temp_profile_pitaueta[idx] = (1./utau
-    //             *(  temp_profile_pixeta[idx]*ux
-    //               + temp_profile_piyeta[idx]*uy
-    //               + temp_profile_pietaeta[idx]*ueta));
-    //         temp_profile_pitautau[idx] = (1./utau
-    //             *(  temp_profile_pitaux[idx]*ux
-    //               + temp_profile_pitauy[idx]*uy
-    //               + temp_profile_pitaueta[idx]*ueta));
-    //         if (ix == 0 && iy == 0) {
-    //             DATA.x_size = -dummy2*2;
-    //             DATA.y_size = -dummy3*2;
-    //             if (omp_get_thread_num() == 0) {
-    //                 music_message << "eta_size=" << DATA.eta_size
-    //                               << ", x_size=" << DATA.x_size
-    //                               << ", y_size=" << DATA.y_size;
-    //                 music_message.flush("info");
-    //             }
-    //         }
-    //     }
-    // }
-
-    // for (int ix = 0; ix < nx; ix++) {
-    //     for (int iy = 0; iy< ny; iy++) {
-    //         int idx = iy + ix*ny;
-    //         if (DATA.Initial_profile == 9 || DATA.Initial_profile == 91) {
-    //             arena_current(ix, iy, ieta).u[0] = temp_profile_utau[idx];
-    //             arena_current(ix, iy, ieta).u[1] = temp_profile_ux[idx];
-    //             arena_current(ix, iy, ieta).u[2] = temp_profile_uy[idx];
-    //             arena_current(ix, iy, ieta).u[3] = temp_profile_ueta[idx];
-    //         } else {
-    // 	        if (ix == 0) {arena_current(ix, iy, ieta).u[1] = (eos.get_temperature(arena_current(ix+1,iy,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix,iy,ieta).epsilon,0,tau0))/0.1;}
-    // 		else if (ix == nx-1)  {arena_current(ix, iy, ieta).u[1] = (eos.get_temperature(arena_current(ix,iy,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix-1,iy,ieta).epsilon,0,tau0))/0.1;}
-    // 		else {arena_current(ix, iy, ieta).u[1] = (eos.get_temperature(arena_current(ix+1,iy,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix-1,iy,ieta).epsilon,0,tau0))/0.2;}
-
-    // 		if (iy == 0) {arena_current(ix, iy, ieta).u[2] = (eos.get_temperature(arena_current(ix,iy+1,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix,iy,ieta).epsilon,0,tau0))/0.1;}
-    // 		else if (iy == ny-1)  {arena_current(ix, iy, ieta).u[2] = (eos.get_temperature(arena_current(ix,iy,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix,iy-1,ieta).epsilon,0,tau0))/0.1;}
-    // 		else {arena_current(ix, iy, ieta).u[2] = (eos.get_temperature(arena_current(ix,iy+1,ieta).epsilon,0,tau0)-eos.get_temperature(arena_current(ix,iy-1,ieta).epsilon,0,tau0))/0.2;}
-		
-    // 		arena_current(ix, iy, ieta).u[0] = sqrt(1.+ arena_current(ix, iy, ieta).u[1]*arena_current(ix, iy, ieta).u[1] + arena_current(ix, iy, ieta).u[2]*arena_current(ix, iy, ieta).u[2]);
-    //             arena_current(ix, iy, ieta).u[3] = 0.0;
-    //         }
-    // 	}
-    // }
-
-    // const std::string out_name = "evolution_xyeta.dat";
-    // std::string out_open_mode = "w";
-
-    // FILE *out_file = NULL;
-
-    // out_file = fopen(out_name.c_str(), out_open_mode.c_str());
-    
-    // for (int i = 0; i < 100000; i++) {
-    //    double cs2_local = eos.get_cs2(0.01*i, 0, 0.0);
-    //    double temp = eos.get_temperature(0.01*i, 0, 0.0);
-    //    fprintf(out_file, "%e %e\n", temp*hbarc, cs2_local);
-    // }
-
-    // fclose(out_file);
-    // exit(99);
 }
 
 void Init::initial_MCGlb_with_rhob(SCGrid &arena_prev, SCGrid &arena_current) {
@@ -833,6 +738,7 @@ void Init::initial_MCGlb_with_rhob(SCGrid &arena_prev, SCGrid &arena_current) {
 
                 arena_current(ix, iy, ieta).epsilon = epsilon;
                 arena_current(ix, iy, ieta).rhob = rhob;
+		// PCE: start the local chemical clock at the hydro initialization time.
 		arena_current(ix, iy, ieta).proper_tau = DATA.tau0;
 
                 arena_current(ix, iy, ieta).u[0] = 1.0;
@@ -989,6 +895,9 @@ void Init::get_jetscape_preequilibrium_vectors(
 
 void Init::initial_with_jetscape(int ieta, SCGrid &arena_prev,
                                  SCGrid &arena_current) {
+    // WARNING(PCE): the imported vectors contain no chemical clock, and this
+    // initializer does not set proper_tau. Adjust the initial-state contract
+    // before using this path with the time-dependent PCE EOS.
     const int nx = arena_current.nX();
     const int ny = arena_current.nY();
     const int neta = arena_current.nEta();
@@ -997,7 +906,6 @@ void Init::initial_with_jetscape(int ieta, SCGrid &arena_prev,
         for (int iy = 0; iy< ny; iy++) {
             const double rhob = 0.0;
             double epsilon = 0.0;
-            //const int idx = iy + ix*ny + ieta*ny*nx;  // old trento convension
             const int idx = ieta + iy*neta + ix*ny*neta;  // new trento convension
             epsilon = (jetscape_initial_energy_density[idx]
                        *DATA.sFactor/hbarc);  // 1/fm^4
@@ -1197,12 +1105,7 @@ double Init::cylindrical_temperature_init(double r) {
 
 	const double T0_in_GeV=DATA.T_init_in_GeV;
 	const double sigma=DATA.T_width_in_fm;
-	//const double sigma_regul=20*sigma;
-//	return T0*(exp(-r*r/(sigma*sigma))+1e-3*exp(-r*r/(sigma_regul*sigma_regul)));
 	return T0_in_GeV*exp(-r*r/(sigma*sigma));
-    //Log[T0Global (Exp[-r^2/3^2] + .3 Exp[-(r - 4)^2/1^2] + 
-    //    0*.9 Exp[-(r - 7)^2/1^2])]
-	//return T0*(exp(-r*r/(3*3))+0.3*exp(-(r-4)*(r-4)/(1*1)));
 
 
 }
@@ -1221,11 +1124,9 @@ void Init::initial_cylindrical(int ieta, SCGrid &arena_prev,
     double eta_envelop_ed = eta_profile_normalisation(eta);
     int entropy_flag = DATA.initializeEntropy;
     for (int ix = 0; ix < nx; ix++) {
-	//const double x=(ix-nx/2.)*dx;
         const double x = - DATA.x_size/2. + ix*dx;
         for (int iy = 0; iy< ny; iy++) {
             const double y = - DATA.y_size/2. + iy*dy;
-            //const double y=(iy-ny/2.)*dy;
             double rhob = 0.0;
             double epsilon = 0.0;
             double T_in_fm;
@@ -1233,19 +1134,19 @@ void Init::initial_cylindrical(int ieta, SCGrid &arena_prev,
                 const double r=sqrt(x*x+y*y);
                 T_in_fm=cylindrical_temperature_init(r)/hbarc;
                     
-                epsilon = T_in_fm*hbarc;//(eos.get_T2e(T_in_fm*hbarc, 0.0, -1));  // 1/fm^4
+                // WARNING(PCE): this legacy test assigns T [GeV] directly to
+                // epsilon, whose EOS interface expects [1/fm^4]. Restore a
+                // consistent temperature-to-energy conversion before using it
+                // as a physical PCE temperature-initialized hydro calculation.
+                epsilon = T_in_fm*hbarc;
             } else {
 		        std::cout << "This shouldn't happen...\n";
                 exit(1);
-                //double local_sd = (temp_profile_ed[ix][iy]*DATA.sFactor
-                //                   *eta_envelop_ed);
-                //epsilon = eos.get_s2e(local_sd, rhob);
             }
-            //if (epsilon < 0.00000000001)
-            //    epsilon = 0.00000000001;
 
             arena_current(ix, iy, ieta).epsilon = epsilon;
             arena_current(ix, iy, ieta).rhob = rhob;
+	    // PCE: start the local chemical clock at the hydro initialization time.
 	    arena_current(ix, iy, ieta).proper_tau = DATA.tau0;
 
             arena_current(ix, iy, ieta).u[0] = 1;
@@ -1258,10 +1159,6 @@ void Init::initial_cylindrical(int ieta, SCGrid &arena_prev,
 
             arena_prev(ix, iy, ieta) = arena_current(ix, iy, ieta);
 
-            //arena_current(ix, iy, ieta).u[0] = 1;
-            //arena_current(ix, iy, ieta).u[1] = 0.0;
-            //arena_current(ix, iy, ieta).u[2] = 0.0;
-            //arena_current(ix, iy, ieta).u[3] = 0.0;
         }
     }
 }

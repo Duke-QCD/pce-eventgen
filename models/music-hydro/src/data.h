@@ -67,9 +67,12 @@ typedef struct init_data {
     double eta_size;    //!< -eta_size/2 < eta < eta_size/2
     double tau_size;    //!< tau_0 < tau < tau0+tau_size
     double tau0;
+    // PCE light/strange chemical relaxation times [fm]; nonpositive values
+    // select equilibrium in the corresponding EOS fugacity prescription.
     double tau_eq_l;
     double tau_eq_s;
 
+    // Initial light/strange quark fugacities at the local clock value tau0.
     double fug_l_0;
     double fug_s_0;
 
@@ -183,6 +186,10 @@ typedef struct init_data {
 
     int freezeOutMethod;        //!< freeze-out method
 
+    // WARNING(PCE): these inherited TFO/energy-list controls do not select
+    // the modified Cornelius surface, which uses T/T_switch(gamma_l) = 1.
+    // Restore criterion/output handling before relying on legacy threshold
+    // scans or multiple freeze-out surfaces; see Evolve's initialization.
     double TFO;      //!< freeze-out temperature. Used if useEpsFO=0
 
     int useEpsFO;    //!< if 1, use energy density value

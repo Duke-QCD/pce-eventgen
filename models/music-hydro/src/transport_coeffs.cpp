@@ -13,14 +13,14 @@ TransportCoeffs::TransportCoeffs(const EOS &eosIn, const InitData &Data_in)
 }
 
 
-double TransportCoeffs::get_eta_over_s(double T) const {
+double TransportCoeffs::get_eta_over_s(double T, Cell_small &cell) const {
     double eta_over_s;
     if (DATA.T_dependent_shear_to_s == 1) {
         eta_over_s = get_temperature_dependent_eta_over_s_default(T);
     } else if (DATA.T_dependent_shear_to_s == 2) {
         eta_over_s = get_temperature_dependent_eta_over_s_duke(T);
     } else if (DATA.T_dependent_shear_to_s == 3) {
-        eta_over_s = get_temperature_dependent_eta_over_s_sims(T);
+        eta_over_s = get_temperature_dependent_eta_over_s_sims(T, cell);
     } else {
         eta_over_s = DATA.shear_to_s;
     }
@@ -57,12 +57,21 @@ double TransportCoeffs::get_temperature_dependent_eta_over_s_duke(
 
 
 double TransportCoeffs::get_temperature_dependent_eta_over_s_sims(
-                                                double T_in_fm) const {
+						double T_in_fm, Cell_small &cell) const {
     double T_in_GeV = T_in_fm*hbarc;
     double T_kink_in_GeV = DATA.eta_over_s_T_kink_in_GeV;
     double low_T_slope = DATA.eta_over_s_low_T_slope_in_GeV;
     double high_T_slope = DATA.eta_over_s_high_T_slope_in_GeV;
     double eta_over_s_at_kink = DATA.eta_over_s_at_kink;
+
+    // PCE: place the SIMS shear-viscosity kink at the local composition-
+    // dependent switching temperature, using this Runge-Kutta stage's cell.
+    if (DATA.whichEOS == 18) {
+        double T_ratio = eos.get_T_ratio(cell);   // T / Tc(tau)
+        if (T_ratio > 1e-15) {
+            T_kink_in_GeV = T_in_GeV / T_ratio;   // Tc(tau)
+        }
+    }
 
     const double eta_over_s_min = 1e-6;
     double eta_over_s;

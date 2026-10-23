@@ -168,8 +168,6 @@ void Freeze::ComputeParticleSpectrum_pseudo_improved(InitData *DATA,
     double m = particleList[j].mass;
     int deg = particleList[j].degeneracy;
     int baryon = particleList[j].baryon;
-    // int s = particleList[j].strange;
-    // int c = particleList[j].charge;
     double mu_PCE = particleList[j].muAtFreezeOut;
     int sign;
     if (baryon == 0) {
@@ -393,8 +391,11 @@ void Freeze::ComputeParticleSpectrum_pseudo_improved(InitData *DATA,
                                                   + peta/tau*sigma_mu[3]);
                             double E = (ptau*u_flow[0] - px*u_flow[1]
                                         - py*u_flow[2] - peta*u_flow[3]);
-                            // this is the equilibrium f, f_0:
-			    //double f = 1./(exp(1./T*(E - mu))/pow(light_fugacity,(1.25+0.25*sign))+sign);
+                            // WARNING(PCE): legacy light-only spectrum ansatz.
+                            // gamma_s is read but unused; the suppression uses
+                            // statistics rather than species quark content.
+                            // Adjust/validate before using this path in place
+                            // of the custom light/strange iS3D sampler.
 		            double f;
 			    if (DATA->tau_eq_l != 0 or DATA->tau_eq_s != 0) {f = 1./(exp(1./T*(E - mu))/pow((0.15+0.85*pow(light_fugacity,2)),(1.25 + 0.25*sign)) + sign);}
 			    else {f = 1./(exp(1./T*(E - mu)) + sign);}
@@ -601,8 +602,6 @@ void Freeze::ComputeParticleSpectrum_pseudo_boost_invariant(
     double m = particleList[j].mass;
     int deg = particleList[j].degeneracy;
     int baryon = particleList[j].baryon;
-    // int s = particleList[j].strange;
-    // int c = particleList[j].charge;
     double mu_PCE = particleList[j].muAtFreezeOut;
     int sign;
     if (baryon == 0) {
@@ -755,8 +754,10 @@ void Freeze::ComputeParticleSpectrum_pseudo_boost_invariant(
                                               + peta*sigma_mu[3]/tau);
                         double E = (ptau*u_flow[0] - px*u_flow[1]
                                     - py*u_flow[2]- peta*u_flow[3]);
-                        // this is the equilibrium f, f_0:
-			//double f = 1./(exp(1./T*(E - mu))/pow(light_fugacity,(1.25+0.25*sign))+sign);
+                        // WARNING(PCE): same legacy light-only ansatz as the
+                        // non-boost-invariant path. It does not apply gamma_s
+                        // or the iS3D species-dependent quark-content factors;
+                        // adjust/validate before treating both paths as equal.
 			double f;
 			if (DATA->tau_eq_l != 0 or DATA->tau_eq_s != 0) {f = 1./(exp(1./T*(E - mu))/pow((0.15+0.85*pow(light_fugacity,2)),(1.25 + 0.25*sign)) + sign);}
 			else {f = 1./(exp(1./T*(E - mu)) + sign);}
