@@ -167,7 +167,7 @@ DATA_SPEC_AUAU = [
          cent_max=50.0, files=["v32.dat"]),
 ]
 
-# O-O 5.36 TeV. Likelihood-ready files are data/OO5360/centrality/*.dat (see data/OO5360/README.md;
+# O-O 5.36 TeV. Likelihood-ready files are supplied via --data-dir (see data/OO5360.md;
 # derived/ is selected explicitly below). Centrality errors are combined experimental errors
 # (CMS is digitized); identified-hadron errors mix digitized totals and flagged assumptions.
 # No experimental covariance is used.
@@ -725,7 +725,7 @@ def assemble(Y, Yerr, labels, data_dir, drop_specs=()):
     if assumed:
         warnings.warn("Preliminary O-O inputs use assumed uncertainties for some or all points "
                       "in these groups: " + ", ".join(assumed) + ". Other identified errors are "
-                      "digitized totals with a reading margin. See data/OO5360/README.md.",
+                      "digitized totals with a reading margin. See data/OO5360.md and the supplied dataset notes.",
                       UserWarning, stacklevel=2)
     cols, errcols, ydata, sdata, lab = [], [], [], [], []
     for spec in DATA_SPEC:

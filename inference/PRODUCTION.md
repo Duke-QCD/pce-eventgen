@@ -20,7 +20,7 @@ python check_inputs.py --system "$FIT_SYSTEM" \
 
 The matrix needs its matching same-stem `.meta.json`. Pair it with the exact original design table; `design_index` selects zero-based design rows even when matrix rows are missing or reordered. Check system/profile compatibility, matched-observable counts, usable designs and skipped bins. The [matrix contract](../docs/reference/analysis-inputs.md) defines labels, errors and metadata.
 
-`--data-dir` changes the location of files used by the selected adapter. It does not infer a new observable schema from arbitrary tables. Preserve the expected filenames and any relative sibling-directory layout. The [measurement reference](data/README.md) links each supplied dataset's definitions, acceptance and uncertainty assumptions. A new collision system or observable definition needs a reviewed adapter in `inference.py`.
+`--data-dir` changes the location of files used by the selected adapter. It does not infer a new observable schema from arbitrary tables. Preserve the expected filenames and any relative sibling-directory layout. The [measurement reference](data/README.md) describes the bundled AuAu200 tables and links the schema for user-supplied O-O data. A new collision system or observable definition needs a reviewed adapter in `inference.py`.
 
 Matched counts depend on the supplied matrix and data; there is no required campaign row count. For multiplicity-space observables, only measurement points inside every retained design's covered range enter. Review those cuts rather than extrapolating or deleting matrix columns needed for weighting.
 
@@ -98,7 +98,7 @@ python -u emulator_validation.py --system "$FIT_SYSTEM" \
   --nsplits 8 --out-dir "$FIT_RUNS/validation"
 ```
 
-Mirror the fit's `--drop-specs` and `--oo-yield-proxies` options when used. The latter is an O-O-only opt-in defined in the [dataset notes](data/OO5360/README.md). The standalone validator uses feed-down off; it does not replay a feed-down-corrected fit.
+Mirror the fit's `--drop-specs` and `--oo-yield-proxies` options when used. The latter is an O-O-only opt-in defined in the [input schema](data/OO5360.md#optional-correlated-proxy-extension). The standalone validator uses feed-down off; it does not replay a feed-down-corrected fit.
 
 This writes `<prefix>_closure_parity_z.pdf`, `_closure_holdout.pdf`, `_closure_metrics.pdf` and `_pca_spectrum.pdf`. The lowercase PCA filename differs from the main fit's `_PC_spectrum.pdf`. Validation trains its own folds. Its `validation_kfold.npz` cache skips repeated fold training when provenance/settings match; rendering the PCA spectrum still trains one full-grid emulator. `--refit` explicitly replaces that cache. `--model-grid` validates raw model columns, a different observable selection from the likelihood-matched default.
 

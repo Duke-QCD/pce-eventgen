@@ -6,7 +6,7 @@ This pipeline aligns analysis matrices with the design table and measurements, t
 
 **Your own analysis:** follow the [production workflow](PRODUCTION.md) for supplied model/data paths, logged fits, convergence review and saved-result plotting. Personal campaign inputs and outputs are not required by the walkthrough.
 
-The supplied measurement directories are reference datasets for the supported system adapters. Dataset-specific choices and preliminary extensions are documented beside the relevant data; they are not requirements for the general workflow. Keep personal datasets and campaign notes outside those reference directories, for example in an external directory or ignored `config/users/<study>/`.
+The supplied AuAu200 measurement directories are reference datasets. O-O support is an input adapter; its study data and evidence are not distributed. The [O-O schema](data/OO5360.md) explains how to supply compatible measurements. Keep personal datasets and campaign notes in an external directory or ignored `config/users/<study>/`.
 
 ## Environment and paths
 
@@ -63,7 +63,7 @@ Explicit relative paths and output directories are relative to your launch direc
 
 ## Stage the selected analysis inputs
 
-The [500-row design table](../config/initialization/design_params_combined500.dat) and [measurements](data/README.md) are included; generated analysis products are not. Copy a matching matrix/metadata pair from the selected campaign:
+The [500-row design table](../config/initialization/design_params_combined500.dat) and [AuAu200 reference measurements](data/README.md) are included; generated analysis products and O-O study measurements are not. Copy a matching matrix/metadata pair from the selected campaign:
 
 ```bash
 # Replace both source paths with the matching AuAu200 aggregate products.
@@ -74,7 +74,7 @@ cp /path/to/analysis/model_matrix.meta.json model/model_matrix_AuAu200.meta.json
 | System | Existing default matrix path | Required analysis profile | Default measurement directory |
 |---|---|---|---|
 | AuAu200 | `model/model_matrix_AuAu200.npz` | `baseline` (also used for missing profile field) | `data/AuAu200/STAR` |
-| OO5360 | `model/model_matrix_OO5360.npz` | `oo_cross_full_pt027_flat/v3` | `data/OO5360/centrality` |
+| OO5360 | `model/model_matrix_OO5360.npz` | `oo_cross_full_pt027_flat/v3` | Supplied with `--data-dir`; `data/OO5360/centrality` is an ignored local staging default |
 
 For another filename use `--matrix /absolute/path/matrix.npz` and keep its `.meta.json` alongside it. Use `--design` only if your matrix came from a different design table.
 
@@ -93,12 +93,12 @@ python check_inputs.py --system AuAu200
 The checker uses the fitter's alignment, observable and metadata checks without training/sampling. It reports selected observables, usable designs and parameter policy, returning nonzero for invalid/missing inputs. For O-O:
 
 ```bash
-python check_inputs.py --system OO5360
+python check_inputs.py --system OO5360 --data-dir /absolute/path/to/oo-data/centrality
 ```
 
 Assembly can report skipped measurement bins, excluded model designs and dataset-specific uncertainty assumptions. Inspect those counts and the applicable data notes; they determine what enters the fit. The preflight is a compatibility check, not a validation of experimental uncertainties or physics assumptions.
 
-O-O has an explicitly enabled experimental extension, `--oo-yield-proxies`, described in its [dataset notes](data/OO5360/README.md). It is disabled by default and is not needed for the synthetic walkthrough or the default AuAu200 workflow.
+O-O has an explicitly enabled assumed-proxy extension, `--oo-yield-proxies`, described in the [input schema](data/OO5360.md#optional-correlated-proxy-extension). It requires a supplied input/evidence bundle and is disabled by default.
 
 ## Emulator validation, inference and outputs
 
@@ -114,7 +114,7 @@ The primary fits are:
 
 ```bash
 python inference.py --system AuAu200 --out-dir plots_auau_primary
-python inference.py --system OO5360 --out-dir plots_oo_primary
+python inference.py --system OO5360 --data-dir /absolute/path/to/oo-data/centrality --out-dir plots_oo_primary
 ```
 
 Two variants change the parameter treatment:
@@ -209,7 +209,6 @@ Entry points support `--help` without fitting. The [source argument index](../do
 | `make_flow_plots.py` | Flow/predictive figures; reconstruct saved inputs and parameter slice |
 | `regen_corners.py` | Regenerate corner figures directly from saved posterior parameters/samples |
 | `flat_eta_slice_compare.py` | Compare an existing 14-D posterior slice with the flat-shear fit |
-| `compare_oo_matrix.py` | Compare new-profile and old-baseline O-O matrices; both are separate supplied inputs |
 | `robustness_scan.py`, `plot_robustness_forest.py` | AuAu200 and OO5360 observable-group exclusion scans and figures, including optional O-O proxies |
 | `loo_closure.py`, `plot_loo_closure.py` | AuAu200 leave-one-out parameter-recovery runs and figures |
 | `loo_showcase.py`, `plot_showcase_overlay.py` | Selected injected-truth recovery cases and overlay figures |
@@ -231,7 +230,7 @@ python run_oo_suite.py --dry-run --out-root plots_oo_suite
 
 Actual suite runs produce per-variant log files and append start/end/exit-status records to `plots_OO5360_suite.status` under `--out-root`. Outputs are overwritten on rerun; status history is appended. There is no suite-level posterior resume. In Python integrations, call `I.use_system(...)` before overriding module globals.
 
-The suite's `idpt_all` adds K0S mean pT to the primary selection; it does not enable optional yield proxies. Dataset-specific sensitivity selections are documented with the [O-O inputs](data/OO5360/README.md).
+The suite's `idpt_all` adds K0S mean pT to the primary selection; it does not enable optional yield proxies. Supply an O-O dataset as described in the [input schema](data/OO5360.md).
 
 ## Development checks
 
@@ -243,4 +242,4 @@ python tools/check_workflow.py
 python tools/build_docs.py --check
 ```
 
-The inference tests create their own small, synthetic model grids, exercise real GP training/sampling and plotting, and use no external campaign products. Small fixtures test execution and contracts, not scientific accuracy or convergence.
+The inference tests create their own small, synthetic model grids and O-O input fixtures, exercise real GP training/sampling and plotting, and use no private study inputs or external campaign products. Small fixtures test execution and contracts, not scientific accuracy or convergence.

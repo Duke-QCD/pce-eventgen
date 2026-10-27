@@ -7,6 +7,10 @@ __pycache__/
 /model/*.npz
 /model/*.meta.json
 
+# Personal O-O study inputs/evidence. The public input schema is data/OO5360.md.
+# Keep the legacy local staging path so saved-run provenance remains valid.
+/data/OO5360/
+
 # Existing scripts use these naming conventions for generated results.
 /plots*/
 /plots*.log

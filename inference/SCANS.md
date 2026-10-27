@@ -23,9 +23,13 @@ python robustness_scan.py --system OO5360 --oo-yield-proxies --drop-specs '' --d
 
 Run O-O primary or all-optional observable-group scans in separate destinations:
 
+Supply your own matrix, design and [O-O measurements](data/OO5360.md); the study data are not bundled.
+
 ```bash
-python robustness_scan.py --system OO5360 --out-root scan_robust_OO5360_primary
-python robustness_scan.py --system OO5360 --oo-yield-proxies --drop-specs '' --out-root scan_robust_OO5360_optional
+python robustness_scan.py --system OO5360 --matrix "$OO_MATRIX" --design "$OO_DESIGN" \
+  --data-dir "$OO_DATA" --out-root scan_robust_OO5360_primary
+python robustness_scan.py --system OO5360 --matrix "$OO_MATRIX" --design "$OO_DESIGN" \
+  --data-dir "$OO_DATA" --oo-yield-proxies --drop-specs '' --out-root scan_robust_OO5360_optional
 python plot_robustness_forest.py --summary scan_robust_OO5360_primary/summary.csv
 ```
 

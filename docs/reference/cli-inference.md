@@ -12,20 +12,15 @@ The standard `-h, --help` is implicit in argparse. Options added in loops are sh
 
 ## Contents
 
-- [inference/audit_oo_data.py](#inferenceaudit_oo_datapy)
 - [inference/build_oo_yield_proxies.py](#inferencebuild_oo_yield_proxiespy)
 - [inference/check_inputs.py](#inferencecheck_inputspy)
-- [inference/check_oo_proxy_closure.py](#inferencecheck_oo_proxy_closurepy)
-- [inference/compare_oo_matrix.py](#inferencecompare_oo_matrixpy)
 - [inference/emulator_validation.py](#inferenceemulator_validationpy)
-- [inference/extract_alice_uncertainties.py](#inferenceextract_alice_uncertaintiespy)
 - [inference/flat_eta_slice_compare.py](#inferenceflat_eta_slice_comparepy)
 - [inference/inference.py](#inferenceinferencepy)
 - [inference/loo_closure.py](#inferenceloo_closurepy)
 - [inference/loo_showcase.py](#inferenceloo_showcasepy)
 - [inference/make_demo_inputs.py](#inferencemake_demo_inputspy)
 - [inference/make_flow_plots.py](#inferencemake_flow_plotspy)
-- [inference/plot_alice_uncertainty_overlays.py](#inferenceplot_alice_uncertainty_overlayspy)
 - [inference/plot_excluded_baryons.py](#inferenceplot_excluded_baryonspy)
 - [inference/plot_loo_closure.py](#inferenceplot_loo_closurepy)
 - [inference/plot_robustness_forest.py](#inferenceplot_robustness_forestpy)
@@ -35,16 +30,6 @@ The standard `-h, --help` is implicit in argparse. Options added in loops are sh
 - [inference/robustness_scan.py](#inferencerobustness_scanpy)
 - [inference/run_flat_eta.py](#inferencerun_flat_etapy)
 - [inference/run_oo_suite.py](#inferencerun_oo_suitepy)
-
-## inference/audit_oo_data.py
-
-[Source](../../inference/audit_oo_data.py)
-
-Check O-O measurement files and retained source evidence without a model matrix.
-
-| Argument / flag | Parser context | Declaration | Meaning | Source |
-|---|---|---|---|---|
-| <code>--data-dir</code> | <code>parser</code> | <code>type=Path; default=DEFAULT_DATA</code> | O-O root containing centrality/. | [line 208](../../inference/audit_oo_data.py#L208) |
 
 ## inference/build_oo_yield_proxies.py
 
@@ -68,29 +53,6 @@ Check matrix, design, measurements and observable assembly without training or w
 
 Uses shared options declared in [inference.py](#inferenceinferencepy). Run this script with `--help` for the expanded interface and launcher defaults.
 
-## inference/check_oo_proxy_closure.py
-
-[Source](../../inference/check_oo_proxy_closure.py)
-
-Conditional charged-multiplicity closure of OPTIONAL O-O yield proxies.
-
-| Argument / flag | Parser context | Declaration | Meaning | Source |
-|---|---|---|---|---|
-| <code>--check</code> | <code>parser</code> | <code>action=store_true</code> | Check retained diagnostics without writing | [line 345](../../inference/check_oo_proxy_closure.py#L345) |
-
-## inference/compare_oo_matrix.py
-
-[Source](../../inference/compare_oo_matrix.py)
-
-Arrival check for a regenerated O-O matrix (analysis profile inference.OO_PROFILE) against the previous "baseline" matrix built from the SAME caches. Run before any inference on the new matrix.
-
-| Argument / flag | Parser context | Declaration | Meaning | Source |
-|---|---|---|---|---|
-| <code>--new</code> | <code>ap</code> | <code>required=True</code> | Regenerated O-O matrix NPZ. | [line 210](../../inference/compare_oo_matrix.py#L210) |
-| <code>--old</code> | <code>ap</code> | <code>required=True</code> | Baseline O-O matrix NPZ to compare against. | [line 211](../../inference/compare_oo_matrix.py#L211) |
-| <code>--rtol</code> | <code>ap</code> | <code>type=float; default=0.0</code> | relative tolerance for the unchanged-column identity (default 0 = exact) | [line 212](../../inference/compare_oo_matrix.py#L212) |
-| <code>--noise-flag</code> | <code>ap</code> | <code>type=float; default=0.5</code> | flag c_n bins whose median Y_err / design sd exceeds this (default %(default)s) | [line 214](../../inference/compare_oo_matrix.py#L214) |
-
 ## inference/emulator_validation.py
 
 [Source](../../inference/emulator_validation.py)
@@ -107,18 +69,6 @@ Uses shared options declared in [inference.py](#inferenceinferencepy). Run this 
 | <code>--nsplits</code> | <code>ap in cli()</code> | <code>type=int; default=8</code> | No help text declared; consult linked source. | [line 275](../../inference/emulator_validation.py#L275) |
 | <code>--refit</code> | <code>ap in cli()</code> | <code>action=store_true</code> | recompute the k-fold (else use cache) | [line 276](../../inference/emulator_validation.py#L276) |
 | <code>--holdout</code> | <code>ap in cli()</code> | <code>type=int; default=-1</code> | stacked-row index for the example; -1 = median-mult design | [line 277](../../inference/emulator_validation.py#L277) |
-
-## inference/extract_alice_uncertainties.py
-
-[Source](../../inference/extract_alice_uncertainties.py)
-
-Reproduce reviewed ALICE SQM2026 error-box digitization for existing O-O points.
-
-| Argument / flag | Parser context | Declaration | Meaning | Source |
-|---|---|---|---|---|
-| <code>--data-dir</code> | <code>parser</code> | <code>type=Path; default=ROOT</code> | No help text declared; consult linked source. | [line 172](../../inference/extract_alice_uncertainties.py#L172) |
-| <code>--source-pdf</code> | <code>parser</code> | <code>type=Path</code> | Re-extract panel images from the pinned PDF before generating. | [line 173](../../inference/extract_alice_uncertainties.py#L173) |
-| <code>--check</code> | <code>parser</code> | <code>action=store_true</code> | Verify generated DAT/JSON contents without writing. | [line 174](../../inference/extract_alice_uncertainties.py#L174) |
 
 ## inference/flat_eta_slice_compare.py
 
@@ -231,17 +181,6 @@ Publication Observable{Posterior,Prior}Summary figures, charged flow shown as v_
 | <code>--drop-specs</code> | <code>ap</code> | <code>default=None</code> | comma-separated DATA_SPEC names excluded in that run | [line 172](../../inference/make_flow_plots.py#L172) |
 | <code>--talk</code> | <code>ap</code> | <code>action=store_true</code> | defense-slide variant: bigger fonts, compacted panels, PNG _talk.png output; prior figures use a single blue band (no median) | [line 174](../../inference/make_flow_plots.py#L174) |
 | <code>--prior-pct</code> | <code>ap</code> | <code>type=float; default=99.0</code> | talk prior-band coverage %% (99 -&gt; robust [0.5,99.5]; 100 -&gt; full min-max envelope). Non-99 values are written with a _p&lt;pct&gt; filename tag so sets coexist | [line 177](../../inference/make_flow_plots.py#L177) |
-
-## inference/plot_alice_uncertainty_overlays.py
-
-[Source](../../inference/plot_alice_uncertainty_overlays.py)
-
-Make visual checks of retained ALICE error-box coordinates, without editing data.
-
-| Argument / flag | Parser context | Declaration | Meaning | Source |
-|---|---|---|---|---|
-| <code>--data-dir</code> | <code>parser</code> | <code>type=Path; default=ROOT</code> | No help text declared; consult linked source. | [line 143](../../inference/plot_alice_uncertainty_overlays.py#L143) |
-| <code>--output-dir</code> | <code>parser</code> | <code>type=Path; default=ROOT / "review"</code> | No help text declared; consult linked source. | [line 144](../../inference/plot_alice_uncertainty_overlays.py#L144) |
 
 ## inference/plot_excluded_baryons.py
 
