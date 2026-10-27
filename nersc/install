@@ -5,10 +5,8 @@ if [ -z "${NERSC_HOST:-}" ]; then
   echo 'this script should be run on a NERSC machine' >&2
   exit 1
 fi
-case "$(realpath "${CONDA_PREFIX:-/nonexistent}")" in
-  /global/common/software/*) ;;
-  *) echo 'activate a conda env in /global/common/software (see nersc/SETUP.md)' >&2; exit 1 ;;
-esac
+# local/install checks the active Python environment and installs into it.
+# Global Common is the setup default; existing environments elsewhere also work.
 # NERSC may set BASH_ENV to a profile that changes the active environment.
 unset BASH_ENV
 export CC="${CC:-cc}" CXX="${CXX:-CC}"

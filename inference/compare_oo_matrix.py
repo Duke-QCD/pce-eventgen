@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Arrival check for a regenerated O-O matrix (Stage A profile inference.OO_PROFILE) against the
+Arrival check for a regenerated O-O matrix (analysis profile inference.OO_PROFILE) against the
 previous "baseline" matrix built from the SAME caches.
 Run before any inference on the new matrix.
 

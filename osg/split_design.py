@@ -71,9 +71,9 @@ def parse_args():
     p.add_argument("--design", required=True, help="Design directory name, e.g. design_000.")
     p.add_argument("--system", default="AuAu200")
     p.add_argument("--campaign", required=True,
-                   help="AP-side campaign directory for the slot tree. For a "
-                        "cross-check on a design NERSC already ran, use a separate "
-                        "name so no drain can land on the cached NERSC events. "
+                   help="AP-side campaign directory for the slot tree. This name "
+                        "does not select the NERSC drain destination; use a separate "
+                        "--pscratch-root on the drain for an isolated cross-check. "
                         "Event identity is the design/system/event tail below it.")
     p.add_argument("--n-events", type=int, default=None,
                    help="Optional CAP on how many (non-skipped) events to stage this "

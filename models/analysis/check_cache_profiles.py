@@ -118,9 +118,10 @@ def main():
             assert meta["validation"]["raw_reference_enabled"]
             assert meta["validation"]["raw_reference_events"] > 0
             out, ameta = sx.extract_design(str(cache), require_verified=False)
+            assert ameta["observable_schema_version"] == "observables/v1"
             assert out["nsub_used"].tolist() == [1+i%3 for i in range(23)] + [0]
             assert ameta["reconstruction_assumes"]["flow_eta_gap"] == fp["subevent_eta_gap"]
-            prefix = str(tmp / f"design_000_{system}_stageA")
+            prefix = str(tmp / f"design_000_{system}_observables")
             sx.write_artifact(out, ameta, prefix)
             with contextlib.redirect_stdout(io.StringIO()):
                 assert sr.validate_against_cache(prefix, str(cache))
@@ -154,8 +155,8 @@ def main():
         artifacts = tmp / "artifacts"
         artifacts.mkdir()
         for suffix in (".npz", ".meta.json"):
-            shutil.copyfile(tmp / f"design_000_OO5360_stageA{suffix}",
-                            artifacts / f"design_000_OO5360_stageA{suffix}")
+            shutil.copyfile(tmp / f"design_000_OO5360_observables{suffix}",
+                            artifacts / f"design_000_OO5360_observables{suffix}")
         aggregate = [sys.executable, ANALYSIS / "run_analysis.py", "aggregate", "--out-dir", artifacts,
                      "--system", "OO5360", "--bin-edges", "0", "100", "--no-csv",
                      "--expected-fingerprint", results["OO5360"][2]]
@@ -163,14 +164,14 @@ def main():
         matrix_meta = json.loads((artifacts / "model_matrix.meta.json").read_text())
         assert matrix_meta["cache_fingerprint"]["subevent_eta_gap"] == 1.4
         for suffix in (".npz", ".meta.json"):
-            shutil.copyfile(tmp / f"design_000_AuAu200_stageA{suffix}",
-                            artifacts / f"design_001_OO5360_stageA{suffix}")
+            shutil.copyfile(tmp / f"design_000_AuAu200_observables{suffix}",
+                            artifacts / f"design_001_OO5360_observables{suffix}")
         rejected = run(aggregate, ok=False)
         assert "mixed cache fingerprints" in rejected.stderr
         # Uniform but wrong scopes must also fail, including pre-existing
         # artifacts that formerly would have bypassed extraction via skip-done.
         for suffix in (".npz", ".meta.json"):
-            (artifacts / f"design_000_OO5360_stageA{suffix}").unlink()
+            (artifacts / f"design_000_OO5360_observables{suffix}").unlink()
         rejected = run(aggregate, ok=False)
         assert "does not match selected expected fingerprint" in rejected.stderr
         wrong_cache = tmp / "wrong_cache/design_001/OO5360"
@@ -185,16 +186,16 @@ def main():
             [ANALYSIS / "run_analysis.py", "run", "--cache-root", tmp / "wrong_cache",
              "--out-dir", artifacts, "--system", "OO5360"],
             [ANALYSIS / "analyze_design.py", "reduce", "--artifact",
-             artifacts / "design_001_OO5360_stageA"],
+             artifacts / "design_001_OO5360_observables"],
             [ANALYSIS / "reduce_observables.py", "reduce", "--artifact",
-             artifacts / "design_001_OO5360_stageA"],
+             artifacts / "design_001_OO5360_observables"],
         ]
         for cmd in reject_commands:
             rejected = run([sys.executable] + cmd + scope_flag, ok=False)
             assert "does not match selected expected fingerprint" in rejected.stderr
         # A correct old Au artifact remains analyzable under its own scope.
         run([sys.executable, ANALYSIS / "analyze_design.py", "reduce", "--artifact",
-             tmp / "design_000_AuAu200_stageA", "--expected-fingerprint", results["AuAu200"][2],
+             tmp / "design_000_AuAu200_observables", "--expected-fingerprint", results["AuAu200"][2],
              "--n-boot", "0", "--bin-edges", "0,100"])
         no_scope_env = {k: v for k, v in os.environ.items() if not k.startswith("HIC_")}
         rejected = run(aggregate[:-2], no_scope_env, ok=False)

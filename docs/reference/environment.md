@@ -2,19 +2,9 @@
 
 [Handbook](../README.md) · [Configuration](configuration.md) · [Installation](../../local/README.md)
 
-On NERSC, source your generated `activate.sh` in each shell and allocation. It
-selects the conda environment, your paths file (`HIC_PATHS_FILE`) and your INI
-(`HIC_CAMPAIGN_CONFIG`). Profiles are rendered from
-[`config/templates/`](../../config/templates/); the paths file assigns every
-variable below, so sourcing a different profile replaces all of them.
-`osg/container_paths.sh` sets the same variables to baked `/opt` paths inside
-the OSG image.
+Source the generated NERSC `activate.sh` in each shell/allocation to select software, `HIC_PATHS_FILE` and `HIC_CAMPAIGN_CONFIG`. A profile replaces its path assignments. The OSG container sets corresponding baked `/opt` paths.
 
-For local installed use, activate the Python environment and source
-`<prefix>/share/iS3D/paths.sh`. That helper preserves explicit `HIC_*` values.
-If you change a data root after sourcing it, update its already-exported
-derived paths too (or start a clean shell). Shell exports are values, not
-live formulas. The first-run guide sets each required path explicitly.
+Locally, activate the environment and source `<prefix>/share/iS3D/paths.sh`; it preserves explicit overrides. Changing a root later does not update derived exports, so change them too or start a clean shell. See [first-run selections](../getting-started.md#3-run-a-local-two-event-example).
 
 ## Profile and storage
 
@@ -48,8 +38,7 @@ live formulas. The first-run guide sets each required path explicitly.
 | `HIC_SMASH_TMP_ROOT` | SMASH temporary output root beneath the system directory; default `smash_output`, with one subdirectory/event |
 | `HIC_EOS_PCE_DIR` | Exact directory with numbered EOS files `0.dat`–`29.dat`; also selects the installer data source |
 
-Outside a profile, the wrapper's installed/source discovery supplies these
-defaults; an explicit export selects another installation.
+Outside a profile, the wrapper's installed/source discovery supplies these defaults; an explicit export selects another installation.
 
 ## iS3D data and metadata
 
@@ -66,14 +55,14 @@ defaults; an explicit export selects another installation.
 | `HIC_BARYON_DICT` | `baryon_dict.dat`, used for signed-baryon reconstruction and provenance |
 | `HIC_PDG_MASS` | Pole-mass table `PDG/pdg_smash_pce.dat` |
 
-Keep the exact approved set. `tools/check_physics_data.py is3d` verifies the
-two-occupancy coefficient tables against their checked-in checksums.
+Keep the exact approved set. `tools/check_physics_data.py is3d` verifies the two-occupancy coefficient tables against their checked-in checksums.
 
 ## Build controls
 
 | Variable | Meaning |
 |---|---|
 | `HIC_BUILD_JOBS` | Parallel compilation cap; use a modest value such as 2 for a first build |
+| `HIC_TRENTO_BUILD_DIR` | Alternate TRENTo build directory; normal installer uses `build-workflow/` |
 | `HIC_MUSIC_BUILD_DIR` | Alternate MUSIC build directory; normal installer uses `build-workflow/` |
 | `HIC_IS3D_BUILD_DIR` | Alternate CPU iS3D build directory |
 | `HIC_SMASH_BUILD_DIR` | Alternate SMASH build directory |
@@ -83,15 +72,13 @@ two-occupancy coefficient tables against their checked-in checksums.
 | `CONDA_PREFIX`, `VIRTUAL_ENV` | Active environment; installer validates that Python belongs to it |
 | `PYTHONNOUSERSITE` | Set `1` to avoid unrelated user-installed Python packages shadowing the environment |
 
-SMASH-specific CMake arguments follow `--` in the installer. Standalone MUSIC
-CMake exposes `MUSIC_PCE_TABLE_DIR` and `MUSIC_INSTALL_PCE_DATA`; standalone
-iS3D CMake exposes `IS3D_INSTALL_DATA`. These are CMake settings, not INI keys.
+SMASH-specific CMake arguments follow `--` in the installer. Standalone MUSIC CMake exposes `MUSIC_PCE_TABLE_DIR` and `MUSIC_INSTALL_PCE_DATA`; standalone iS3D CMake exposes `IS3D_INSTALL_DATA`. These are CMake settings, not INI keys.
+
+The shared installer refreshes dependency discovery each run. It resets generated CMake state automatically when the source location, active environment, compiler/modules or options change, and otherwise keeps incremental builds. For Pythia selection, explicit SMASH CMake options override `PYTHIA_CONFIG`, then `PYTHIA_ROOT_DIR`/`PYTHIA8`, then the bundled `build-deps/pythia8309` copy.
 
 ## Cache scope and direct-script controls
 
-Config-based cache commands read the expected fingerprint and export these
-cuts before invoking backends. Change the reviewed fingerprint/profile as a
-unit; setting a cut in an unrelated shell does not change an existing cache.
+Config-based cache commands read the expected fingerprint and export these cuts before invoking backends. Change the reviewed fingerprint/profile as a unit; setting a cut in an unrelated shell does not change an existing cache.
 
 | Variable | Fingerprint field / purpose |
 |---|---|
@@ -106,31 +93,23 @@ unit; setting a cut in an unrelated shell does not change an existing cache.
 | `HIC_ALLOW_MALFORMED_ROWS` | Direct builder malformed-row allowance; CLI/config can override |
 | `HIC_MAX_DROPPED_EVENTS` | Direct builder dropped-event allowance; CLI/config can override |
 
-The cache backends default to this checkout's `models/cache/` scripts;
-`HIC_CACHE_SCRIPT`, `HIC_PUBLISH_SCRIPT` and `HIC_REAPER_SCRIPT` override them
-for testing an alternative build of one backend.
+The cache backends default to this checkout's `models/cache/` scripts; `HIC_CACHE_SCRIPT`, `HIC_PUBLISH_SCRIPT` and `HIC_REAPER_SCRIPT` override them for testing an alternative build of one backend.
 
 ## Threads and fill
 
-`OMP_NUM_THREADS` controls threaded numerical work; keep it within assigned
-CPUs. `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS`, and `NUMEXPR_NUM_THREADS`
-can be set to 1 to avoid extra thread pools in each Python worker. The OSG
-worker clamps library/OpenMP threads to one. SMASH in this chain is serial.
+Generated NERSC profiles set `OMP_NUM_THREADS=1` for control/cache/analysis processes and limit `OPENBLAS_NUM_THREADS`, `MKL_NUM_THREADS` and `NUMEXPR_NUM_THREADS` to one. The event launcher replaces `OMP_NUM_THREADS` with the physical cores assigned to each worker (half the Slurm logical CPUs, rounded up) and uses `OMP_PLACES=cores OMP_PROC_BIND=spread`. Fill chooses the same default separately for each step. No manual thread exports are needed for these paths; stale shell settings do not control batch generation. For local runs, select `OMP_NUM_THREADS` within assigned CPUs. The OSG worker clamps library/OpenMP threads to one. SMASH in this chain is serial.
 
-The fill shell helper consumes `design ntasks mode restore short system`
-rows, requires `SLURM_JOB_ID`, and accepts:
+The fill shell helper consumes `design ntasks mode restore short system` rows, requires `SLURM_JOB_ID`, and accepts:
 
 | Variable | Default / meaning |
 |---|---|
 | `CPT` | 16 logical CPUs/task |
 | `CPT_AFTERBURNER` | `CPT`; can reduce for afterburner-only plan rows |
-| `OMP_THREADS` | Per-line CPUs/task; explicit fill thread override |
+| `OMP_THREADS` | One per assigned physical core by default (logical CPUs/task divided by two, rounded up); explicit fill thread override |
 | `RAW_ROOT` | `HIC_RAW_ROOT`; required |
 | `NEVENTS` | Required; must match the initialized campaign |
 | `MAXRETRY` | 3; persistent afterburner attempt cap |
 | `LOG_ROOT` | `$SCRATCH/logs/fill_<timestamp>` |
 | `SYSTEM` | Plan system; an explicit conflicting value is refused |
 
-`campaign.py fill` supplies these from the INI where mapped. Each step stays
-on one node and queues within the allocation when needed. More allocated nodes
-do not make an individual Python cache/analysis pool span nodes.
+`campaign.py fill` supplies these from the INI where mapped. Each step stays on one node and queues within the allocation when needed. More allocated nodes do not make an individual Python cache/analysis pool span nodes.

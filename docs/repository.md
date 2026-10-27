@@ -1,94 +1,59 @@
-# Repository map and developer guide
+# Repository maintenance guide
 
 [Handbook](README.md) · [Command index](reference/commands.md)
 
-## Find the implementation
+## Code map
 
-| Location | Role and entry points |
+| Location | Responsibility |
 |---|---|
-| `README.md`, `docs/` | Overview, onboarding, concepts, glossary, reference, and troubleshooting |
-| [`config/initialization/`](../config/initialization/README.md) | Campaign design table, base parameter template, standalone example `parameters.dat`, MUSIC input template; see [parameter mapping](reference/physics.md) before changing |
-| [`config/templates/`](../config/templates/) | The four profile files `nersc/configure_user.py` renders: paths, launcher, INI, `activate.sh` |
-| `config/` | Also the SMASH workflow YAML and cache fingerprints; generated profiles go under the ignored `config/users/` |
-| `local/install`, `nersc/install` | Shared installation into the active environment; NERSC delegates to the local builder |
-| `nersc/configure_user.py` | Render a personal profile from `config/templates/`; no installation, data copying, initialization or submission |
-| `models/campaign.py` | Preferred NERSC command dispatcher using the shared INI |
-| `models/run_designs.py` | Parse design table, render per-design parameters, initialize, audit/repair and route/submit designs |
-| `models/initialize.py` | Render MUSIC input and run TRENTo to create a design bundle |
-| `models/run-events`, `models/run-events-wrapper` | Maintained event runner and runtime-discovery wrapper, also installed in `bin/` |
-| `models/repair_stale_events.py` | Between-pass event auditing, supported repair, archive finalization, readiness/routing outputs |
-| `models/select_fill.py`, `models/fill_wave.sh` | Near-complete-design planning and allocation-local execution |
-| `models/workflow_config.py` | Shared INI schema, typed mappings, path expansion, scope environment |
-| `models/workflow_records.py`, `models/workflow_status.py` | Record/history classification and compact next-action reporting |
-| `models/submit_cache_reap_campaign.py` | Frozen batch cache jobs and local cache/reap dispatch |
-| `models/summarize_cache_reap_records.py` | Review verdict records and emit clean-only reap manifest |
-| `models/surface_archive.py` | The surface-archive path rule shared by repair and maintenance tools |
-| `models/cache/` | [Cache backend guide](../models/cache/README.md) |
-| `models/analysis/` | [Cache analysis and diagnostics](../models/analysis/README.md) |
-| `models/maintenance/` | [Marker census, stuck-event quarantine, archive deletion](../models/maintenance/README.md) |
-| `osg/` | AP staging/splitting/sweep/drain, Condor submit file, worker, container recipe/runtime paths and tests |
-| `inference/` | Standalone emulator and Bayesian inference ("Stage B"), input preflight, measurement tables and its own environment; see its [README](../inference/README.md) |
-| `tools/` | Workflow syntax/path checks, production-data checksum checks, documentation generation |
-| `tests/`, `osg/tests/` | Workflow integration/unit tests with temporary fixtures |
+| [`config/initialization/`](../config/initialization/README.md), `config/config.yaml`, `config/cache_fingerprint_*.json` | Design inputs and model templates, SMASH settings, and cache scope definitions |
+| [`config/templates/`](../config/templates/), `nersc/configure_user.py` | Personal runtime paths, launcher, INI and activation script; generated profiles live in ignored `config/users/` |
+| `local/install`, `nersc/install` | Build and install models and runners into the active environment |
+| `nersc/stage.py` | Upload source without local artifacts; verify and stage external EOS/iS3D runtime data |
+| `tools/download_physics_data.py`, [`data/`](../data/README.md) | Download the versioned data bundle with automatic checks; attribution, release manifest and packaging instructions |
+| `models/campaign.py`, `models/run_designs.py` | Dispatch configured commands; select, initialize, repair and submit designs |
+| `models/initialize.py` | Render MUSIC input and generate TRENTo initial conditions |
+| `models/run-events`, `models/run-events-wrapper` | Run events and select runtime dependencies; also installed in `bin/` |
+| `models/repair_stale_events.py`, `models/select_fill.py`, `models/fill_wave.sh` | Audit/repair interrupted events and plan/run completion passes |
+| `models/workflow_*.py`, `models/surface_archive.py` | Shared configuration, records, status and archive-path rules |
+| [`models/cache/`](../models/cache/README.md), `models/submit_cache_reap_campaign.py`, `models/summarize_cache_reap_records.py` | Survey, cache, publish, review and reap; dispatch jobs and summarize verdicts |
+| [`models/analysis/`](../models/analysis/README.md), [`models/maintenance/`](../models/maintenance/README.md) | Extract/reduce observables and perform standalone recovery or cleanup |
+| [`models/trento/`](../models/trento/README.rst) | Customized initial-condition generator, including nuclear-table input |
+| [`models/music-hydro/`](../models/music-hydro/README.md) | Customized hydrodynamics; EOS, evolution and transport code in `src/` |
+| [`models/iS3D/`](../models/iS3D/README.md) | Customized CPU sampler in `src/cpp/`, particle/coefficient inputs and OSCAR converter |
+| [`models/SMASH/`](../models/SMASH/README.md) | Pinned upstream Git submodule; particle/decay tables are compiled into the executable |
+| [`osg/`](../osg/README.md) | OSG staging, submission, workers, transfer and container build files |
+| [`inference/`](../inference/README.md) | Standalone emulator, Bayesian inference and measurement inputs |
+| `tools/`, `tests/`, `osg/tests/` | Repository/data checks, documentation generator and workflow tests |
 
-## Model source trees
+Model build directories, downloaded `physics-data/` and prepared `dist/` archives are ignored by Git. Large EOS and iS3D coefficient datasets are supplied as a versioned release; `tools/package_physics_data.py` prepares it and `tools/download_physics_data.py` downloads/verifies it. See [setup](getting-started.md) for installation and [physics inputs](reference/physics.md) before changing model conventions.
 
-| Tree | Read first | Active custom areas / other material |
-|---|---|---|
-| `models/trento/` | [README](../models/trento/README.rst), [installation](../models/trento/doc/installation.rst), [usage](../models/trento/doc/usage.rst) | C++ in `src/`, ManualNucleus reader, nuclear-table extraction helper, upstream-style examples/tests/docs |
-| `models/music-hydro/` | [Workflow README](../models/music-hydro/README.md) | `src/eos_PCE.*`, `evolve.cpp`, `transport_coeffs.cpp`, input renderer, one-cell surface helper, EOS generator/data manifest; `utilities/` and `tests/` retain model-specific tools |
-| `models/iS3D/` | [Workflow README and PCE limitations](../models/iS3D/README.md) | Maintained CPU C++ in `src/cpp/`, `paths.sh`, sampler config/data, `iS3D_OSCAR.py`; `scripts/` for sampling/plots; coefficient generator workspaces include archived unsupported paths |
-| `models/SMASH/` | [README](../models/SMASH/README.md), [INSTALL](../models/SMASH/INSTALL.md) | Git submodule pinned to unmodified upstream SMASH `0985d6b3` (SMASH-3.0-1); particle/decay inputs are compiled in; `3rdparty/` contains bundled dependencies |
+Keep personal profiles and campaign notes under ignored `config/users/`. Public configuration examples belong in `config/templates/`.
 
-Generated `build/` directories and compiled binaries are ignored by Git. The
-maintained installer uses separate MUSIC/iS3D/SMASH `build-workflow/` directories;
-the TRENTo build can require clearing an obsolete machine-specific cache by
-moving the generated directory before a clean rebuild. Preserve source and
-physics inputs. CUDA, old makefiles, upstream examples, hackathon benchmarks,
-and coefficient regeneration are separate development tools with their own
-assumptions, not steps required for the production chain.
+## Publication
 
-## Data and provenance
+The publication branch is `codex/publication`. Keep manuscript drafts and exports, personal profiles, credentials, recovery snapshots, generated inference matrices/results and physics-data archives local. The root and inference `.gitignore` files exclude them; `nersc/stage.py code` also excludes them from source transfers. Public measurement reference inputs and their provenance remain part of the inference source.
 
-Track source changes, small configuration and manifests in version control;
-keep the large EOS and iS3D coefficient tables in separately managed storage,
-verified by `tools/check_physics_data.py` against their checked-in manifests. Record the exact source revision/dirty changes, model build toolchain,
-Python environment, particle/coefficient/EOS checksums, nuclear-table metadata,
-design table, initialized bundle, profile/INI and cache fingerprint.
-
-The maintained campaign procedures are the [NERSC guide](nersc-campaign.md) and
-[OSG runbook](osg-campaign.md). Matrix, statistical-error and feed-down contracts
-live in the [analysis-input reference](reference/analysis-inputs.md).
-Use current records, audits, matrix metadata and source checks for live counts,
-input compatibility and validation status.
-
-## Preparing a Git handoff
-
-Commit the workflow, configuration templates, documentation, tests and data
-manifests together. TRENTo, MUSIC and iS3D are ordinary tracked source trees.
-SMASH is the sole submodule: `.gitmodules` records its public upstream URL and
-the parent commit records revision `0985d6b32fb801404c933d70c86c23759d60ff1f`.
-Keep the submodule checkout clean; local changes inside it are not included in
-a parent-repository commit.
-
-Before handing over a revision, check it from a fresh recursive clone and run
-the verification commands below:
+Before publishing, commit the intended source changes, run the checks below and audit the exact branch, including its earlier revisions:
 
 ```bash
+python3 tools/check_publication.py --ref codex/publication
 git status --short
 git submodule status --recursive
-git diff HEAD --check
-git clone --recurse-submodules --branch BRANCH REPOSITORY_URL NEW_DIRECTORY
 ```
 
-Replace the last command's arguments with the published branch, repository URL
-and a new directory. A source ZIP or `git archive` from the parent repository
-does not include SMASH's contents; use a recursive clone. Build directories,
-personal profiles and `.recovery/` stay local. Supply the separately managed
-physics datasets and verify their manifests as described in the
-[first-run guide](getting-started.md#1-obtain-code-and-physics-data).
-Existing campaigns also need their saved configuration and
-[archive base](reference/files.md#surface-archive).
+The publication audit checks historical paths, recognizable credential formats, large Git blobs and legacy LFS pointers without printing secret values. It does not certify data redistribution rights or inspect upstream submodule history. Review any newly added files before committing them; ignore rules do not remove files already present in Git history.
+
+For the first publication, create an empty public `Duke-QCD/pce-eventgen` repository without initializing a README, license or `.gitignore`. Push only the reviewed publication branch:
+
+```bash
+git push --dry-run origin codex/publication:main
+git push origin codex/publication:main
+```
+
+Set `main` as the GitHub default branch. Local recovery branches retain the original history, including old personal job files, so do not publish them with `--all` or `--mirror`. Only the publication branch has those historical files and the obsolete LFS-only EOS input removed; its rewritten commit IDs differ from the preserved local originals.
+
+Publish the prepared archive separately as described in [physics-data release instructions](../data/README.md), using the exact release tag `physics-data` and asset name `pce-eventgen-physics-data.tar.gz`. Then test a fresh recursive clone, the physics-data download and the [first-run walkthrough](getting-started.md). Source publication and data publication are separate actions.
 
 ## Verification without running physics jobs
 
@@ -101,50 +66,28 @@ PYTHONNOUSERSITE=1 python3 -m unittest discover -s osg/tests -v
 python3 tools/build_docs.py --check
 ```
 
-The workflow checker compiles Python syntax in memory, checks shell syntax and
-configured script paths, without importing models or submitting jobs. Tests
-exercise path resolution, orchestration, runner handoffs, marker/history policy,
-cache dispatch and OSG transfer/deletion behavior with temporary fixtures.
-Some tests need compatible NumPy/h5py or build tools and report skips otherwise.
-Passing these checks is not a scientific regression or a full model build.
+The workflow checker checks syntax and configured paths without running models or submitting jobs. Tests use temporary fixtures to check orchestration, event states, cache policy and OSG transfer/deletion behavior. Some checks require NumPy/h5py or build tools and report skips when unavailable. Passing these checks does not establish numerical or physics validity.
 
-After building TRENTo, include its native cache/input regressions by pointing
-`TRENTO_TEST_EXECUTABLE` at the freshly built executable:
+After building TRENTo, enable its native cache/input regressions:
 
 ```bash
 TRENTO_TEST_EXECUTABLE=/absolute/path/to/trento PYTHONNOUSERSITE=1 \
   python3 -m unittest discover -s tests -p test_trento_runtime.py
 ```
 
-These tests use temporary cache directories and bounded subprocesses. They are
-skipped when no executable is selected; archive round-trip tests require `zstd`.
+These tests are skipped without a selected executable; archive round-trip checks also require `zstd`.
 
-For cache/analysis arithmetic, `python models/analysis/check_cache_profiles.py`
-runs synthetic end-to-end profile checks in an analysis environment. The EOS
-generator tests use a controlled custom-HRG fixture; they do not certify a
-fresh production EOS. For changed model physics, plan separate numerical
-regressions and controlled data/interface runs with documented inputs.
+For cache/analysis arithmetic, run `python models/analysis/check_cache_profiles.py` in the analysis environment. Model or physics changes also need numerical regressions with documented inputs; synthetic workflow fixtures and EOS-generator tests cannot certify production physics data.
 
 ## Maintaining this handbook
 
-`tools/build_docs.py` parses Python source without importing or executing the
-tools. It generates `docs/reference/cli-*.md` and `model-input-defaults.md`.
-It uses only Python's standard library and can run from any directory:
+`tools/build_docs.py` generates `docs/reference/cli-*.md` and `model-input-defaults.md` by parsing source without importing or executing tools. After changing command help or model defaults, regenerate and check the references from the repository root:
 
 ```bash
 python3 tools/build_docs.py
 python3 tools/build_docs.py --check
 ```
 
-Update source help when adding/changing flags, then regenerate and review the
-diff. The generator captures declarations, not runtime truth: handwritten
-guides must explain action boundaries, INI/environment precedence, shared
-helpers, positional/non-argparse tools, scientific caveats, and subcommand
-context. Add a new source directory to `GROUPS` when adding a new tool family.
-The check exits nonzero for stale/missing pages and writes nothing.
+Review the generated diff. Add new tool families to `GROUPS` in the generator. `--check` reports stale/missing pages without writing files. Handwritten guides must explain resolved defaults, configuration precedence, action boundaries and scientific limits that source declarations alone cannot convey.
 
-Keep the root README as an entry point. Put tutorials and conceptual explanations
-in the handbook, exact operational procedures in the campaign/site runbooks,
-file/data contracts in `docs/reference/`,
-and model-specific limitations beside the model. Link between them rather
-than copying an entire deployment recipe into every page.
+Keep the root README as the entry point, tutorials in the handbook, operational procedures in the site runbooks, file/data contracts in `docs/reference/`, and model-specific limitations beside each model. Link between pages instead of duplicating procedures. Write each prose paragraph on one source line with a blank line between paragraphs; preserve formatting inside commands, tables and diagrams.

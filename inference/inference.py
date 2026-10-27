@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Single-system Bayesian inference (Stage B): emulator + likelihood + MCMC.
+Single-system Bayesian inference: emulator + likelihood + MCMC.
 
 The collision system (Au-Au 200, O-O 5.36, ...) is selected with `--system` (default AuAu200) or
 `use_system(name)` from an importing script; everything system-specific -- matrix, data dir,
@@ -8,10 +8,10 @@ DATA_SPEC, which beam-energy norm is active, FIXED_PARAMS, feed-down -- lives in
 entry. The matrix and feed-down files must carry a sibling `.meta.json` whose "system" matches
 (hard error otherwise), so one system's model can never be scored against another's data. The
 matrix meta's "analysis_profile" (missing = "baseline") must also equal the system's `profile`:
-Stage A profiles may redefine a column under its old label (O-O: charged mean_pT, c2/c3_gap).
+Analysis profiles may redefine a column under its old label (O-O: charged mean_pT, c2/c3_gap).
 The description below is written for Au-Au; other systems follow the same matrix/data format.
 
-Reads the Stage A product `model_matrix_<SYSTEM>.npz` (already binned on STAR-style
+Reads the analysis output `model_matrix_<SYSTEM>.npz` (already binned on STAR-style
 centrality edges) and matches each model observable to the STAR/PHENIX data
 bins, aggregating whole model bins where a data bin spans several (yields:
 width-weighted mean; <pT>: yield-weighted; flow: multiplicity^2-weighted mean
@@ -168,10 +168,13 @@ DATA_SPEC_AUAU = [
 ]
 
 # O-O 5.36 TeV. Likelihood-ready files are data/OO5360/centrality/*.dat (see data/OO5360/README.md;
-# staging/ and superseded/ must NOT be loaded). Errors are stat+sys in quadrature, no covariance.
+# derived/ is selected explicitly below). Centrality errors are combined experimental errors
+# (CMS is digitized); identified-hadron errors mix digitized totals and flagged assumptions.
+# No experimental covariance is used.
 # sys_floor=0.05 on every observable (decided 2026-09-22): a model-discrepancy + missing-covariance
-# proxy, same value as Au-Au flow. It only bites where data errors are sub-percent (<pT>, v2).
-# REQUIRES a matrix with analysis_profile OO_PROFILE (checked at load): that Stage A profile
+# proxy, same value as Au-Au flow. It is added in quadrature even when data errors exceed 5%;
+# it is not a covariance model or a measured experimental systematic.
+# REQUIRES a matrix with analysis_profile OO_PROFILE (checked at load): that analysis profile
 # REDEFINES two charged columns under their old labels, so this spec is only valid against it.
 # Matching notes:
 #  - dNch: CMS |eta|<0.5, pT>0 == model charged eta05 dNch_deta (unchanged by the profile).
@@ -201,26 +204,28 @@ DATA_SPEC_OO5360 = [
     dict(name="c3_charged", species="charged", obs="c3_gap", kind="flow",
          sys_floor=0.05, cent_max=45.0,
          files=["v3_2_charged_ALICE.dat"]),
-    # ALICE preliminary strange hadrons vs <dNch/deta>: digitized, errors ASSUMED (yields 10/12/15%,
-    # <pT> 3%), see data/OO5360/derived/make_derived.py. PRELIMINARY TEST INPUT. Lambda omitted (as
-    # Au-Au; also no O-O Sigma0 feed-down file); K0S rather than K+- (the model K0S ~ K_tot/2 -- never
-    # use both).
+    # ALICE preliminary strange hadrons vs <dNch/deta>: errors digitized where resolved;
+    # K0S yields and seven Xi yield points still have assumed errors. Per-point evidence and
+    # pixel-reading margins are in data/OO5360/uncertainties/. Lambda omitted (as
+    # Au-Au; also no O-O Sigma0 feed-down file). This specification uses K0S; charged kaons
+    # are a distinct species and would require their own experimental input and matching.
     dict(name="dN_dy_K0S_vs_mult", species="K0S", obs="dN_dy", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/dN_dy_K0S_vs_mult.dat"]),
+         sys_floor=0.05, uncertainty_status="assumed", files=["../derived/dN_dy_K0S_vs_mult.dat"]),
     dict(name="dN_dy_Xi_vs_mult", species="Xi_tot", obs="dN_dy", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/dN_dy_Xi_tot_vs_mult.dat"]),
+         sys_floor=0.05, uncertainty_status="mixed", files=["../derived/dN_dy_Xi_tot_vs_mult.dat"]),
     dict(name="dN_dy_Omega_vs_mult", species="Omega_tot", obs="dN_dy", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/dN_dy_Omega_tot_vs_mult.dat"]),
-    # Identified <pT> (added 2026-10-12). Every design's K0S <pT> / charged <pT> is below the data
-    # ratio (model <=1.23 vs ~1.40: kaons too soft, as in Au-Au at half the size), so K0S <pT> and
-    # charged <pT> cannot both be fit; Xi/Omega are reachable. Run with and without
+         sys_floor=0.05, uncertainty_status="digitized", files=["../derived/dN_dy_Omega_tot_vs_mult.dat"]),
+    # Identified <pT> (added 2026-10-12). The primary fit retains the historical K0S exclusion.
+    # The old data ratio ~1.40 used extrapolated pT>0 charged <pT>, not the current fiducial
+    # 0.27<pT<5 observable (central-bin ratio ~1.11). Recheck model reachability with the v3
+    # matrix before drawing conclusions about that exclusion. Run with and without
     # (--drop-specs mean_pT_K0S_vs_mult,mean_pT_Xi_vs_mult,mean_pT_Omega_vs_mult).
     dict(name="mean_pT_K0S_vs_mult", species="K0S", obs="mean_pT", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/mean_pT_K0S_vs_mult.dat"]),
+         sys_floor=0.05, uncertainty_status="digitized", files=["../derived/mean_pT_K0S_vs_mult.dat"]),
     dict(name="mean_pT_Xi_vs_mult", species="Xi_tot", obs="mean_pT", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/mean_pT_Xi_tot_vs_mult.dat"]),
+         sys_floor=0.05, uncertainty_status="digitized", files=["../derived/mean_pT_Xi_tot_vs_mult.dat"]),
     dict(name="mean_pT_Omega_vs_mult", species="Omega_tot", obs="mean_pT", kind="vs_mult",
-         sys_floor=0.05, files=["../derived/mean_pT_Omega_tot_vs_mult.dat"]),
+         sys_floor=0.05, uncertainty_status="digitized", files=["../derived/mean_pT_Omega_tot_vs_mult.dat"]),
 ]
 # PARKED, and INVALID with the OO_PROFILE matrix: ATLAS <pT> extrapolated to pT>0 (the 2026-10-08
 # stopgap) matches only a "baseline"-profile matrix, whose charged mean_pT is pT>0 (the 186/240
@@ -230,7 +235,7 @@ DATA_SPEC_OO5360_MEANPT_PT0 = [
          sys_floor=0.05,
          files=["../derived/mean_pT_charged_ATLAS_pT0.dat"]),
 ]
-# Stage A analysis profile the O-O spec requires (stage_a_extract.py OO_ANALYSIS_PROFILE).
+# Analysis profile required by the O-O measurement specification.
 OO_PROFILE = "oo_cross_full_pt027_flat/v3"
 # Largest allowed same-sample (k=1 fallback) share of the pair weight in any model bin feeding a fitted
 # flow data bin. Fallback events carry same-sample nonflow that cross_full excludes. 0 = any fallback
@@ -244,7 +249,7 @@ YIELD_OBS = {"charged": "dNch_deta"}   # species -> yield observable; default "d
 # ============================================================
 # Systems. One entry per collision system; use_system() copies it into the module globals that
 # the rest of the file (and the scripts that `import inference as I`) read at call time.
-#   profile: the Stage A analysis_profile the matrix meta must carry (missing = "baseline"). The
+#   profile: the analysis_profile the matrix meta must carry (missing = "baseline"). The
 #            fingerprint and feature labels cannot tell profiles apart, so this is the only guard
 #            against fitting a spec to columns that were redefined under the same label.
 #   norm   : the one active beam-energy normalization (the other NORM_PARAMS are dropped)
@@ -381,6 +386,9 @@ OBS_LABELS = {
     "mean_pT_charged_pT0": r"$\langle p_T \rangle_{\rm ch}$ ($p_T>0$) [GeV]",
     "dN_dy_K0S_vs_mult": r"$dN_{K^0_S}/dy$", "dN_dy_Xi_vs_mult": r"$dN_{\Xi}/dy$",
     "dN_dy_Omega_vs_mult": r"$dN_{\Omega}/dy$",
+    "proxy_dN_dy_pion_vs_mult": r"$dN_{\pi^++\pi^-}/dy$ (assumed proxy)",
+    "proxy_dN_dy_kaon_vs_mult": r"$dN_{K^++K^-}/dy$ (assumed proxy)",
+    "proxy_dN_dy_proton_vs_mult": r"$dN_{p+\bar p}/dy$ (assumed proxy)",
     "mean_pT_K0S_vs_mult": r"$\langle p_T \rangle_{K^0_S}$ [GeV]",
     "mean_pT_Xi_vs_mult": r"$\langle p_T \rangle_{\Xi}$ [GeV]",
     "mean_pT_Omega_vs_mult": r"$\langle p_T \rangle_{\Omega}$ [GeV]",
@@ -569,9 +577,18 @@ def constituents(edges_lo, edges_hi, lo, hi, tol=1e-6):
 
 
 def read_cent_file(path):
-    raw = np.loadtxt(path)
-    if raw.ndim == 1:
-        raw = raw[None, :]
+    raw = np.loadtxt(path, ndmin=2)
+    if not len(raw) or raw.shape[1] < 5:
+        raise ValueError(f"{path}: expected centrality bounds, midpoint, value and error")
+    if not np.isfinite(raw[:, :min(6, raw.shape[1])]).all():
+        raise ValueError(f"{path}: non-finite measurement or centrality")
+    if (np.any(raw[:, 0] < 0) or np.any(raw[:, 1] > 100)
+            or np.any(raw[:, 0] >= raw[:, 1])
+            or np.any(raw[1:, 0] < raw[:-1, 1])
+            or not np.allclose(raw[:, 2], (raw[:, 0] + raw[:, 1]) / 2, rtol=0, atol=1e-6)):
+        raise ValueError(f"{path}: invalid, overlapping or unordered centrality bins/midpoints")
+    if np.any(raw[:, 4:min(6, raw.shape[1])] < 0):
+        raise ValueError(f"{path}: negative measurement uncertainty")
     lo, hi, y = raw[:, 0], raw[:, 1], raw[:, 3]
     err = np.sqrt(raw[:, 4]**2 + raw[:, 5]**2) if raw.shape[1] >= 6 else raw[:, 4]
     return lo, hi, y, err
@@ -614,6 +631,10 @@ def _assemble_vs_mult(spec, val, err, elo, ehi, floor, data_dir, cols, errcols, 
     if raw.shape[1] != 3:
         raise ValueError(f"{spec['name']}: expected columns `dNch_deta val err`, got {raw.shape[1]}")
     x, d_y, d_e = raw[:, 0], raw[:, 1], raw[:, 2]
+    if (not len(raw) or not np.isfinite(raw).all() or np.any(x <= 0)
+            or np.any(np.diff(x) <= 0) or np.any(d_e < 0)):
+        raise ValueError(f"{spec['name']}: need finite data, positive strictly increasing "
+                         "multiplicity and nonnegative uncertainties")
     key, mkey = (spec["species"], spec["obs"]), ("charged", "dNch_deta")
     for k in (key, mkey):
         if k not in val:
@@ -644,7 +665,7 @@ def check_flow_fallback(matrix_path, slabels, didx, max_frac=None):
     """OO_PROFILE matrices only: hard-error if the k=1 same-sample flow fallback carries more than
     `max_frac` (default FLOW_FALLBACK_MAX) of the pair weight in any model bin inside a FITTED flow
     data bin, for any design. Reads the per-design, per-bin charged_flow_sample_usage written by the
-    Stage A aggregate step."""
+    matrix aggregation step."""
     max_frac = FLOW_FALLBACK_MAX if max_frac is None else max_frac
     if PROFILE != OO_PROFILE:
         return
@@ -667,7 +688,7 @@ def check_flow_fallback(matrix_path, slabels, didx, max_frac=None):
             if not any(lo - 1e-6 <= b["cent_low"] and b["cent_high"] <= hi + 1e-6 for lo, hi in fitted):
                 continue
             f = b["same_full_pair_weight_fraction"]
-            if f is None:       # no pairs at all: Stage A should have failed this design
+            if f is None:       # no pairs at all: observable analysis should have failed this design
                 raise ValueError(f"{d['design_name']} {b['cent_low']:g}-{b['cent_high']:g}%: "
                                  f"no flow pairs in a fitted flow bin")
             nev += int(b["same_full_fallback_events"])
@@ -699,6 +720,13 @@ def assemble(Y, Yerr, labels, data_dir, drop_specs=()):
     unknown = drop - {s["name"] for s in DATA_SPEC}
     if unknown:
         raise ValueError(f"drop_specs not in DATA_SPEC: {sorted(unknown)}")
+    assumed = [s["name"] for s in DATA_SPEC
+               if s["name"] not in drop and s.get("uncertainty_status") in ("assumed", "mixed")]
+    if assumed:
+        warnings.warn("Preliminary O-O inputs use assumed uncertainties for some or all points "
+                      "in these groups: " + ", ".join(assumed) + ". Other identified errors are "
+                      "digitized totals with a reading margin. See data/OO5360/README.md.",
+                      UserWarning, stacklevel=2)
     cols, errcols, ydata, sdata, lab = [], [], [], [], []
     for spec in DATA_SPEC:
         if spec["name"] in drop:
@@ -858,9 +886,51 @@ def closure_report(t, p, s, labels, prefix, make_plots=True):
 # ============================================================
 # Likelihood + Goodman-Weare ensemble sampler
 # ============================================================
-def make_logprob(emu, y_data, sig_data, ranges):
-    lo, hi = ranges[:, 0], ranges[:, 1]
+def gaussian_measurement_loglike(sig_data, cov_data=None):
+    """Prepare Gaussian likelihood, retaining optional correlated proxy/anchor block.
+
+    Emulator uncertainties keep the existing diagonal convention. Only channels
+    with off-diagonal input covariance require a Cholesky factorization.
+    """
+    sig_data = np.asarray(sig_data, float)
+    if not np.all(np.isfinite(sig_data) & (sig_data > 0)):
+        raise ValueError("Need finite positive measurement errors")
     var_exp = sig_data**2
+    correlated = np.array([], dtype=int)
+    block = None
+    if cov_data is not None:
+        covariance = np.asarray(cov_data, float)
+        if (covariance.shape != (len(sig_data), len(sig_data)) or not np.isfinite(covariance).all()
+                or not np.allclose(covariance, covariance.T, rtol=1e-10, atol=1e-12)
+                or not np.allclose(covariance.diagonal(), var_exp, rtol=1e-8, atol=1e-12)):
+            raise ValueError("Measurement covariance must be symmetric with diagonal sig_data**2")
+        if np.linalg.eigvalsh(covariance).min() < -1e-10 * max(var_exp.max(), 1.):
+            raise ValueError("Measurement covariance is not positive semidefinite")
+        off = covariance - np.diag(covariance.diagonal())
+        correlated = np.flatnonzero(np.any(off != 0, axis=1))
+        block = covariance[np.ix_(correlated, correlated)]
+    independent = np.setdiff1d(np.arange(len(sig_data)), correlated)
+
+    def evaluate(residual, std):
+        variance = std**2 + var_exp
+        result = -.5*np.sum(residual[:, independent]**2/variance[:, independent]
+                            + np.log(2*np.pi*variance[:, independent]), axis=1)
+        if len(correlated):
+            cov = np.broadcast_to(block, (len(residual), *block.shape)).copy()
+            ii = np.arange(len(correlated))
+            cov[:, ii, ii] += std[:, correlated]**2
+            chol = np.linalg.cholesky(cov)
+            whitened = np.linalg.solve(chol, residual[:, correlated, None])[:, :, 0]
+            result -= .5*(np.sum(whitened**2, axis=1)
+                          + 2*np.log(chol[:, ii, ii]).sum(axis=1)
+                          + len(correlated)*np.log(2*np.pi))
+        return result
+    return evaluate
+
+
+def make_logprob(emu, y_data, sig_data, ranges, *, cov_data=None):
+    lo, hi = ranges[:, 0], ranges[:, 1]
+    gaussian = gaussian_measurement_loglike(sig_data, cov_data)
 
     def logprob_batch(Theta):
         Theta = np.atleast_2d(Theta)
@@ -868,9 +938,8 @@ def make_logprob(emu, y_data, sig_data, ranges):
         inside = np.all((Theta > lo) & (Theta < hi), axis=1)
         if inside.any():
             mean, std = emu.predict(Theta[inside], return_std=True)
-            var = std**2 + var_exp
             res = mean - y_data
-            out[inside] = -0.5 * np.sum(res*res/var + np.log(2*np.pi*var), axis=1)
+            out[inside] = gaussian(res, std)
         return out
     return logprob_batch
 
@@ -924,20 +993,19 @@ def ensemble_sample(logprob_batch, p0, nsteps, a=2.0, p_de=0.0, rng=None):
         chain[t] = pos
     return chain
 
-def make_logprob_u(emu, y_data, sig_data, ranges, free_pos, template):
+def make_logprob_u(emu, y_data, sig_data, ranges, free_pos, template, *, cov_data=None):
     """Log-posterior in unbounded logit space over the FREE params: theta = lo + (hi-lo)*sigmoid(u).
     Fixed params are inserted (via free_pos/template) before the emulator call, so the full-D
     emulator is CONDITIONED on the fixed slice rather than retrained on dropped columns. `ranges`
     are the free-param ranges. The uniform prior's walls map to +-inf (no out-of-bounds proposal);
     the sum-log term is the Jacobian of the logit map under a uniform prior."""
     lo, hi = ranges[:, 0], ranges[:, 1]; w = hi - lo
-    var_exp = sig_data**2
+    gaussian = gaussian_measurement_loglike(sig_data, cov_data)
     def logprob_u(U):
         U = np.atleast_2d(U)
         p = 1.0 / (1.0 + np.exp(-U)); theta_free = lo + w * p
         mean, std = emu.predict(expand_free(theta_free, free_pos, template), return_std=True)
-        var = std**2 + var_exp; res = mean - y_data
-        ll = -0.5 * np.sum(res*res/var + np.log(2*np.pi*var), axis=1)
+        ll = gaussian(mean - y_data, std)
         jac = np.sum(np.log(np.clip(p * (1.0 - p), 1e-300, None)), axis=1)
         return ll + jac
     return logprob_u
@@ -1252,6 +1320,61 @@ def read_npz(path):
         return {name: archive[name] for name in archive.files}
 
 
+def enable_oo_yield_proxies():
+    """Explicit opt-in; the primary system registry is never modified."""
+    if SYSTEM != "OO5360":
+        raise ValueError("--oo-yield-proxies is valid only for OO5360")
+    from build_oo_yield_proxies import GROUPS
+    if any(spec.get("assumed_proxy") for spec in DATA_SPEC):
+        return
+    for name, species in zip(GROUPS[1:], ("pi_tot", "K_tot", "p_tot")):
+        DATA_SPEC.append(dict(name=name, species=species, obs="dN_dy", kind="vs_mult",
+                              sys_floor=.05, uncertainty_status="proxy", assumed_proxy=True,
+                              files=[f"../optional/{name}.dat"]))
+
+
+def proxy_measurement_covariance(labels, measured, sigmas, data_dir):
+    """Join the selected submatrix of the reproducible proxy/anchor covariance.
+
+    Marginal DAT errors already enter sigmas. Add only off-diagonal terms so the
+    normal per-observable model discrepancy floor remains independent.
+    """
+    selected = {spec["name"]: spec for spec in DATA_SPEC
+                if any(label.startswith(spec["name"] + "__") for label in labels)}
+    if not any(spec.get("assumed_proxy") for spec in selected.values()):
+        return None
+    from build_oo_yield_proxies import build
+    root = Path(data_dir).resolve().parent
+    metadata = json.loads((root / "optional/yield_proxy_metadata.json").read_text())
+    widths = metadata["assumed_fractional_widths"]
+    _, _, archive = build(root, check=True, transfer_kaon=widths["kaon_ratio_transfer"],
+                          transfer_proton=widths["proton_ratio_transfer"],
+                          isospin=widths["charged_neutral_kaon_isospin"])
+    index = {str(label): i for i, label in enumerate(archive["labels"])}
+    target, source = [], []
+    for i, label in enumerate(labels):
+        spec = selected[label.split("__")[0]]
+        if spec.get("assumed_proxy") and label not in index:
+            raise ValueError(f"Proxy covariance lacks selected point {label}")
+        if label not in index:
+            continue
+        j = index[label]
+        expected_error = np.sqrt(archive["covariance"][j,j]
+                                 + (spec.get("sys_floor", 0)*archive["values"][j])**2)
+        if (not np.isclose(measured[i], archive["values"][j], rtol=1e-8, atol=1e-10)
+                or not np.isclose(sigmas[i], expected_error, rtol=1e-8, atol=1e-10)):
+            raise ValueError(f"Proxy/anchor value or marginal error differs for {label}")
+        target.append(i); source.append(j)
+    covariance = np.diag(sigmas**2)
+    subset = archive["covariance"][np.ix_(source, source)].copy()
+    np.fill_diagonal(subset, 0.)
+    covariance[np.ix_(target, target)] += subset
+    warnings.warn("OPTIONAL ASSUMED light-hadron yield proxies selected: correlated with K0S "
+                  "anchors and each other; projected error bars are not experimental uncertainties. "
+                  "See optional/yield_proxy_metadata.json for all assumed widths.", UserWarning, stacklevel=2)
+    return covariance
+
+
 def prepare_inputs(matrix_path=None, design_path=None, data_dir=None, drop_specs=(), feeddown=None):
     """One input contract shared by preflight, fitting and diagnostic scripts.
 
@@ -1276,8 +1399,10 @@ def prepare_inputs(matrix_path=None, design_path=None, data_dir=None, drop_specs
     if not np.isfinite(measured).all() or not np.all(np.isfinite(sigmas) & (sigmas > 0)):
         raise ValueError("Measurements must be finite with positive finite errors.")
     resolve_free(pnames, ranges)
+    covariance = proxy_measurement_covariance(selected, measured, sigmas, data_dir)
     return SimpleNamespace(X=X[valid], Y=grid[valid], errors=grid_errors[valid],
                            measured=measured, sigmas=sigmas, labels=selected,
+                           covariance=covariance,
                            pnames=pnames, ranges=ranges, valid=valid,
                            indices=indices[valid], names=np.asarray(names)[valid],
                            raw_shape=Y.shape)
@@ -1304,6 +1429,14 @@ def input_config(matrix_path=None, design_path=None, data_dir=None, drop_specs=(
         if spec["name"] not in drop_specs:
             for filename in spec["files"]:
                 files["data/" + filename] = Path(_resolve(str(data / filename))).resolve()
+    proxy_enabled = any(spec.get("assumed_proxy") and spec["name"] not in drop_specs for spec in DATA_SPEC)
+    if proxy_enabled:
+        for relative in ("optional/projection_ratios.json", "optional/yield_proxy_metadata.json",
+                         "optional/yield_proxy_covariance.npz", "sources/ALI-SIMUL-480342.pdf",
+                         "sources/ALI-SIMUL-480342.png", "derived/dN_dy_K0S_vs_mult.dat",
+                         "uncertainties/dN_dy_K0S_vs_mult.json"):
+            files["proxy/"+relative] = data.parent / relative
+        files["proxy_implementation"] = ROOT / "build_oo_yield_proxies.py"
     if feeddown:
         inventory = Path(feeddown).expanduser().resolve()
         files.update(feeddown=inventory, feeddown_metadata=inventory.with_suffix(".meta.json"))
@@ -1312,6 +1445,7 @@ def input_config(matrix_path=None, design_path=None, data_dir=None, drop_specs=(
     return dict(schema=1, system=SYSTEM, profile=PROFILE, matrix=str(matrix), design=str(design),
                 data_dir=str(data), feeddown=str(Path(feeddown).expanduser().resolve()) if feeddown else "",
                 drop_specs=sorted(set(drop_specs)), fixed_params=dict(FIXED_PARAMS),
+                oo_yield_proxies_enabled=proxy_enabled,
                 libraries=dict(numpy=np.__version__, scipy=scipy.__version__, sklearn=sklearn.__version__),
                 files=[dict(role=role, **file_identity(path)) for role, path in sorted(files.items())])
 
@@ -1368,6 +1502,8 @@ def posterior_inputs(run_dir, system=DEFAULT_SYSTEM, matrix=None, design=None, d
     if cfg is not None:
         if cfg["system"] != system or cfg["fixed_params"] != FIXED_PARAMS:
             raise ValueError("Posterior configuration does not match its system/fixed parameters.")
+        if cfg.get("oo_yield_proxies_enabled", False):
+            enable_oo_yield_proxies()
         MATRIX_NPZ = matrix or cfg["matrix"]
         DESIGN_DAT = design or cfg["design"]
         DATA_DIR = data_dir or cfg["data_dir"]
@@ -1390,12 +1526,16 @@ def posterior_inputs(run_dir, system=DEFAULT_SYSTEM, matrix=None, design=None, d
     return post, tuple(drop), feeddown
 
 
-def add_input_arguments(parser, *, system=True, feeddown=True, drops=True):
+def add_input_arguments(parser, *, system=True, feeddown=True, drops=True, proxies=False):
     if system:
         parser.add_argument("--system", default=DEFAULT_SYSTEM, choices=sorted(SYSTEMS))
     parser.add_argument("--matrix", help="Matrix NPZ with same-stem .meta.json (default: selected system).")
     parser.add_argument("--design", default=DESIGN_DAT, help="Full design table; indices are zero-based rows.")
     parser.add_argument("--data-dir", help="Measurement directory (default: selected system).")
+    if proxies:
+        parser.add_argument("--oo-yield-proxies", action="store_true",
+                            help="Opt into ASSUMED pi/K/p proxies anchored to O-O K0S, using their joint "
+                                 "covariance. Disabled by default; OO5360 only.")
     if drops:
         parser.add_argument("--drop-specs", default=None,
                             help="Comma-separated observable spec names to exclude (default: the system's "
@@ -1422,6 +1562,8 @@ def configure_inputs(args, *, system=None):
     MATRIX_NPZ = args.matrix or MATRIX_NPZ
     DESIGN_DAT = args.design
     DATA_DIR = args.data_dir or DATA_DIR
+    if getattr(args, "oo_yield_proxies", False):
+        enable_oo_yield_proxies()
 
 
 def validate_run_sizes(nsteps, nburn, nwalkers, nsplits, ndesign=None):
@@ -1513,7 +1655,8 @@ def main(matrix_path=None, design_path=None, data_dir=None,
     # init walkers in the central half, in unbounded logit space
     th0 = rng.uniform(lo + 0.25*(hi-lo), hi - 0.25*(hi-lo), size=(nwalkers, len(free_names)))
     u0 = np.log((th0 - lo) / (hi - th0))
-    chain_u = ensemble_sample(make_logprob_u(emu, y_data, sig_data, free_ranges, free_pos, template),
+    chain_u = ensemble_sample(make_logprob_u(emu, y_data, sig_data, free_ranges, free_pos, template,
+                                            cov_data=getattr(inputs, "covariance", None)),
                               u0, nburn + nsteps, a=SAMPLER_A, p_de=SAMPLER_P_DE, rng=rng)
     chain = theta_from_u(chain_u, free_ranges)   # back to theta for diagnostics/plots/everything below
     samp = chain[nburn:].reshape(-1, len(free_names))
@@ -1579,9 +1722,9 @@ def cli(argv=None, *, mode="all", out_dir=None, nsteps=NSTEPS, auau_only=False):
     Defaults are each system's primary analysis: all active parameters sampled,
     the system's primary observable exclusions, and no feed-down correction.
     """
-    ap = argparse.ArgumentParser(description="Standalone Stage B emulator and Bayesian inference",
+    ap = argparse.ArgumentParser(description="Standalone emulator and Bayesian inference",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    add_input_arguments(ap, system=not auau_only)
+    add_input_arguments(ap, system=not auau_only, proxies=not auau_only)
     ap.add_argument("--parameter-mode", choices=("all", "system", "flat-eta"), default=mode,
                     help="all: every active parameter sampled; system: the system's fixed slice "
                          "(AuAu200 fixes six parameters); flat-eta: both shear slopes fixed at zero")

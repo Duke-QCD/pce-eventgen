@@ -19,7 +19,8 @@ From: hub.opensciencegrid.org/htc/rocky:9
 #       heavy-ion.def
 #       run-events  run-events-wrapper  iS3D_OSCAR.py  container_paths.sh  config.yaml
 #       music-hydro/   iS3D/   smash/            <- models/music-hydro, models/iS3D, models/SMASH
-#       data/iS3D/     data/EOS/                 <- baked physics data (~1 GB)
+#       data/                                   <- complete downloaded physics-data bundle
+#         iS3D/  EOS/  licenses/  manifests/  ATTRIBUTION.md
 #
 #   Stage iS3D_OSCAR.py from models/iS3D/iS3D_OSCAR.py in this checkout.
 #
@@ -47,6 +48,9 @@ From: hub.opensciencegrid.org/htc/rocky:9
     # --- baked read-only physics data (~1 GB total) ---
     data/iS3D                 /opt/data/iS3D
     data/EOS                  /opt/data/EOS
+    data/ATTRIBUTION.md        /opt/data/ATTRIBUTION.md
+    data/licenses             /opt/data/licenses
+    data/manifests            /opt/data/manifests
 
 %post
     set -eux
@@ -62,18 +66,17 @@ From: hub.opensciencegrid.org/htc/rocky:9
     export CXXFLAGS="-march=x86-64-v2 -mtune=generic"
 
     # ---- system toolchain & libraries ------------------------------------
-    # EL9 provides: cmake 3.20+ (>=3.16 ok), gsl 2.6 (>=2.0 ok),
-    #               eigen3 3.4 (>=3.0 ok).  All SMASH reqs satisfied.
+    # Stay on EL9's CMake 3.x, GSL 2.x and Eigen 3.4 packages.
+    # CMake 4 / Eigen 5 do not work with the pinned model build files.
     dnf -y install epel-release
     dnf -y install \
         gcc gcc-c++ gcc-gfortran make cmake git which file \
         gsl-devel eigen3-devel zstd \
         python3 python3-pip python3-devel \
-        boost-devel hdf5-devel \
-        openblas-devel lapack-devel   # BLAS/LAPACK: portable stand-in for NERSC's
-                                      # fast-mkl-amd, in case a code links it.
-                                      # boost/hdf5: insurance for MUSIC/iS3D.
-    pip3 install --no-cache-dir numpy h5py
+        curl
+    # No TRENTo here: MUSIC/iS3D/SMASH do not require Boost or native HDF5,
+    # BLAS/LAPACK beyond GSL's CBLAS, or a separately installed YAML library.
+    pip3 install --no-cache-dir 'numpy>=1.24,<2' 'h5py>=3.8,<4'
     dnf clean all
     mkdir -p /opt/src
 
@@ -125,7 +128,10 @@ PY
     rm -rf build && mkdir build && cd build
     cmake .. \
         -DCMAKE_BUILD_TYPE=Release \
+        '-DCMAKE_CXX_FLAGS_INIT=-include cstdint' \
         '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -march=x86-64-v2 -mtune=generic' \
+        -DBUILD_TESTING=OFF \
+        -DTRY_USE_ROOT=OFF -DTRY_USE_HEPMC=OFF -DTRY_USE_RIVET=OFF \
         -DPythia_CONFIG_EXECUTABLE=/opt/pythia8/bin/pythia8-config
     make -j"${HIC_BUILD_JOBS:-2}"
     mkdir -p /opt/SMASH

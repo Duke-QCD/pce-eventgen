@@ -32,7 +32,7 @@ EXTRA_SECTIONS = {
     'cache': {'nprocs', 'validate_events', 'events_per_shard', 'allow_malformed_rows',
               'max_dropped_events', 'designs_per_task', 'throttle', 'time', 'qos',
               'account', 'constraint', 'nodes_per_task', 'cores', 'jobs'},
-    'analysis_campaign': {'jobs', 'estimator', 'bin_edges', 'y_window', 'charged_window',
+    'analysis_campaign': {'analysis_profile', 'jobs', 'estimator', 'bin_edges', 'y_window', 'charged_window',
                           'n_boot', 'et_eta_window', 'harmonics'},
     'feeddown': {'pids', 'combine_antiparticles', 'out'},
 }

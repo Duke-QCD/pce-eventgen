@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.integrate import trapz
+from scipy.integrate import trapezoid as trapz
 import os
 import sys
 from scipy.interpolate import PchipInterpolator

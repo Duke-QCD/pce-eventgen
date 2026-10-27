@@ -123,7 +123,10 @@ def main():
     ap.add_argument("--system", default="AuAu200")
     ap.add_argument("--campaign", required=True,
                     help="AP-side campaign dir name for the slot tree")
-    ap.add_argument("--total-nevents", type=int, default=10000)
+    ap.add_argument("--total-nevents", type=int, default=10000,
+                    help="Original full campaign event bound, used for gap counting "
+                         "and event-directory padding, including in --dry-run. "
+                         "This is not a submission limit.")
     ap.add_argument("--split-script", default=str(Path(__file__).resolve().with_name('split_design.py')),
                     help="path to split_design.py")
     ap.add_argument("--work-dir", default=None,
@@ -134,8 +137,9 @@ def main():
                     help="do NOT delete the pulled monolith after splitting")
     ap.add_argument("--ssh-opt", action="append", default=[])
     ap.add_argument("--dry-run", action="store_true",
-                    help="do everything EXCEPT pull/split/delete; show the plan and "
-                         "run the done-query + guard (read-only) so you can preview")
+                    help="Query NERSC completion markers and partition guard, then "
+                         "print the plan. Do not read/copy the input bundle, write "
+                         "a manifest, delete files, or submit jobs.")
     args = ap.parse_args()
     if args.total_nevents <= 0:
         ap.error('--total-nevents must be positive')

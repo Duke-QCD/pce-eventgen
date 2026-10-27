@@ -1,13 +1,8 @@
 # Analysis tools
 
-New users should read [From particle output to a calibration matrix](../../docs/analysis.md).
-The [analysis flag index](../../docs/reference/cli-analysis.md) lists all
-declared options with source links; the [file reference](../../docs/reference/files.md)
-explains artifacts and markers.
+New users should read [From particle output to a calibration matrix](../../docs/analysis.md). The [analysis flag index](../../docs/reference/cli-analysis.md) lists all declared options with source links; the [file reference](../../docs/reference/files.md) explains artifacts and markers.
 
-These scripts analyze event output across the model chain. The main NERSC
-commands remain in [the campaign guide](../../docs/nersc-campaign.md) and use the
-shared campaign INI.
+These scripts analyze event output across the model chain. The main NERSC commands remain in [the campaign guide](../../docs/nersc-campaign.md) and use the shared campaign INI.
 
 ## Campaign analysis
 
@@ -26,6 +21,8 @@ Run the profile regression from the repository root in the analysis environment:
 ```bash
 python models/analysis/check_cache_profiles.py
 ```
+
+The [OO5360 v3 observable profile](../../docs/analysis.md#oo5360-observable-profile) is selected with one INI key and uses the same campaign commands.
 
 ## Diagnostics
 

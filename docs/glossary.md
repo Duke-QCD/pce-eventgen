@@ -56,7 +56,7 @@ Terms used throughout the code, logs and documentation, in workflow order.
 | Record, verdict | The JSON result of caching (`*_stage1.json`) or reaping (`*_stage2.json`) a design, in the record directory |
 | Review | Classification of all records into a clean-only reap manifest (`campaign.py review`) |
 | Reap | Deleting raw particle lists whose data a verified published cache holds (`campaign.py reap --submit`) |
-| Extraction, artifact | Per-design sufficient statistics read from a published cache (`<design>_<system>_stageA.npz`, "Stage A") |
+| Extraction, artifact | Per-design sufficient statistics read from a published cache (`<design>_<system>_observables.npz`) |
 | Aggregation, model matrix | Reducing all artifacts to centrality-binned observables, one row per design (`model_matrix.npz`) |
 | Feed-down inventory | Separate per-design hadron yields used to correct Lambda for Sigma0 decays (`feeddown_yields.npz`) |
 
@@ -64,7 +64,7 @@ Terms used throughout the code, logs and documentation, in workflow order.
 
 | Term | Meaning |
 |---|---|
-| Inference ("Stage B") | The standalone emulator and Bayesian fit in `inference/`, run after a model matrix exists |
+| Inference | The standalone emulator and Bayesian fit in `inference/`, run after a model matrix exists |
 | Emulator | The PCA plus Gaussian-process model that predicts observables between design points |
 | Closure | Training on some designs and predicting held-out ones, to check the emulator |
 | Primary analysis | The default fit: all parameters sampled, each system's standard observable exclusions, no feed-down correction |

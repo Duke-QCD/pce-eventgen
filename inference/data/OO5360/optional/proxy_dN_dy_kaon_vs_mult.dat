@@ -1,0 +1,14 @@
+# OPTIONAL ASSUMED PROXY; NOT a measured O-O identified yield.
+# Charge sums: K+ + K-; |y|<0.5; full-pT yield per event.
+# Measured K0S central yields anchor the normalization; anchor errors remain ASSUMED 10%.
+# err is the marginal uncertainty from yield_proxy_covariance.npz; do NOT fit independently.
+# Transfer/isospin/digitization assumptions and provenance: yield_proxy_metadata.json
+# dNch_deta val err
+11.7083 1.554468 0.2198349728
+26.9026 3.33222 0.4712470717
+37.8365 4.56362 0.6453933298
+51.0561 6.0906 0.8613409123
+67.0191 8.02412 1.134781933
+87.282 10.48078 1.482206122
+106.7219 12.83296 1.814854608
+129.4665 15.51124 2.193620598

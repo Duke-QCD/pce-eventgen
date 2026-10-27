@@ -23,7 +23,7 @@
 #   CPT [16]                 logical CPUs per task; keep it even (2 = one core)
 #   CPT_AFTERBURNER [CPT]    CPUs per task on mode=afterburner lines, which run
 #                            no MUSIC; 2 fits 8x more of them per node
-#   OMP_THREADS [line CPT]   OpenMP threads per task
+#   OMP_THREADS [ceil(line CPT / 2)] OpenMP threads per task (one per physical core)
 #   RAW_ROOT [$HIC_RAW_ROOT]  NEVENTS [required]  MAXRETRY [3]
 #   LOG_ROOT [$SCRATCH/logs/fill_<timestamp>]
 set -u
@@ -60,7 +60,7 @@ fi
 
 module load conda || exit 1
 conda activate "$HIC_SOFTWARE_ROOT" || exit 1
-module load gsl cpu || exit 1
+module load cpu || exit 1
 export XDG_DATA_HOME="$CONDA_PREFIX/share"
 export PYTHONNOUSERSITE=1
 
@@ -160,14 +160,14 @@ for _l in "${PLAN_LINES[@]}"; do
   if [[ $MODE == afterburner ]]; then cpt=$CPT_AFTERBURNER; else cpt=$CPT; fi
   max_nt=$(( CPUS_PER_NODE / cpt ))
   nt=$(( NT < max_nt ? NT : max_nt ))
-  STEPS+=("$D $nt $cpt ${OMP_THREADS:-$cpt} $MODE $RESTORE $SHORT $NT")
+  STEPS+=("$D $nt $cpt ${OMP_THREADS:-$(( (cpt + 1) / 2 ))} $MODE $RESTORE $SHORT $NT")
   _tasks=$(( _tasks + nt ))
   _cpus=$(( _cpus + nt * cpt ))
 done
 
 _alloc=$(( NNODES * CPUS_PER_NODE ))
 echo "[fill] plan=$PLAN log_root=$LOG_ROOT"
-echo "[fill] nodes=$NNODES cpus/node=$CPUS_PER_NODE CPT=$CPT CPT_AFTERBURNER=$CPT_AFTERBURNER OMP_THREADS=${OMP_THREADS:-per-line CPT}"
+echo "[fill] nodes=$NNODES cpus/node=$CPUS_PER_NODE CPT=$CPT CPT_AFTERBURNER=$CPT_AFTERBURNER OMP_THREADS=${OMP_THREADS:-physical cores per step}"
 echo "[fill] ${#STEPS[@]} of ${#PLAN_LINES[@]} designs to run: $_tasks tasks, $_cpus of $_alloc CPUs"
 if (( _cpus > _alloc )); then
   echo "[fill] NOTE: more than the allocation holds at once; later steps queue inside it"

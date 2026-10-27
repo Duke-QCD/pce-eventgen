@@ -5,8 +5,13 @@
 export HIC_PATHS_FILE={{PATHS_FILE}}
 export HIC_CAMPAIGN_CONFIG={{CONFIG}}
 source "$HIC_PATHS_FILE" || return 1
+export REPO="$HIC_CODE_HOME"
+export CFG="$HIC_CAMPAIGN_CONFIG"
+export PROJECT={{ACCOUNT}}
 module load conda || return 1
 conda activate "$HIC_SOFTWARE_ROOT" || return 1
-module load cpu gsl || return 1
+# System/Conda GSL needs no module. Add a site-specific dependency module only
+# when this installation was built against it (also in the batch launcher).
+module load cpu || return 1
 export PYTHONNOUSERSITE=1
 export XDG_DATA_HOME="$HIC_SOFTWARE_ROOT/share"

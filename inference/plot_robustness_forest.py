@@ -24,13 +24,22 @@ from plot_style import dissertation_style, PAPER_LABELS, C_AMBER, C_BLUE, C_MED,
 GROUPS = [
     ("baseline", [("baseline", "baseline")], C_MED),
     ("yields / $dE_T$", [("drop_dN_dy_pion", r"drop $\pi$"), ("drop_dN_dy_kaon", r"drop $K$"),
+                          ("drop_dN_dy_K0S_vs_mult", r"drop $K^0_S$ yield"),
+                          ("drop_dN_dy_Xi_vs_mult", r"drop $\Xi$ yield"),
+                          ("drop_dN_dy_Omega_vs_mult", r"drop $\Omega$ yield"),
                           ("drop_dN_dy_Xi", r"drop $\Xi$"), ("drop_dN_dy_Omega", r"drop $\Omega$"),
                           ("drop_dNch_deta", r"drop $dN_{\mathrm{ch}}/d\eta$"),
                           ("drop_dET", r"drop $dE_T/d\eta$")], C_BLUE),
     (r"$\langle p_T\rangle$", [("drop_mean_pT_pion", r"drop $\langle p_T\rangle_\pi$"),
-                                ("drop_mean_pT_kaon", r"drop $\langle p_T\rangle_K$")], C_AMBER),
+                                ("drop_mean_pT_kaon", r"drop $\langle p_T\rangle_K$"),
+                                ("drop_mean_pT_charged", r"drop $\langle p_T\rangle_{\rm ch}$"),
+                                ("drop_mean_pT_K0S_vs_mult", r"drop $\langle p_T\rangle_{K^0_S}$"),
+                                ("drop_mean_pT_Xi_vs_mult", r"drop $\langle p_T\rangle_{\Xi}$"),
+                                ("drop_mean_pT_Omega_vs_mult", r"drop $\langle p_T\rangle_{\Omega}$")], C_AMBER),
     (r"flow $c_n\{2\}$", [("drop_c2_charged", r"drop $c_2\{2\}$"),
                            ("drop_c3_charged", r"drop $c_3\{2\}$")], C_GREEN),
+    ("assumed yield proxies", [(f"drop_proxy_dN_dy_{species}_vs_mult", f"drop {label} proxy")
+                              for species, label in (("pion", r"$\pi$"), ("kaon", "$K$"), ("proton", r"$p+\bar p$"))], C_DATA),
 ]
 PLABEL = {**I.PARAM_LABELS, **PAPER_LABELS}
 PARAMS = [(name, PLABEL[name] + (r" [fm/$c$]" if name.startswith("tau_") else ""))
@@ -46,6 +55,9 @@ def main(summary="scan_robust_500/summary.csv", out="scan_robust_500/robustness_
              if r["status"] in ("ok", "resumed")}
     if "baseline" not in S:
         raise ValueError("Summary must contain a successful baseline fit.")
+    known = {key for _, members, _ in GROUPS for key, _ in members}
+    if set(S) - known:
+        raise ValueError(f"Unknown robustness variants would be omitted: {sorted(set(S) - known)}")
     prior = {name: (lo, hi) for name, lo, hi in I.PARAMS_ALL}
     Path(out).parent.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +89,9 @@ def main(summary="scan_robust_500/summary.csv", out="scan_robust_500/robustness_
         ax.axvline(b50, color="0.55", lw=1.0, ls="--", zorder=1)
         for yp, key, col in zip(yplot, keys, cols):
             m = float(S[key][f"{pkey}_q50"]); l = float(S[key][f"{pkey}_q16"]); u = float(S[key][f"{pkey}_q84"])
+            failed = S[key].get("converged", "").lower() == "false"
             ax.errorbar(m, yp, xerr=[[m - l], [u - m]], fmt="o", ms=7.5, color=col, ecolor=col,
+                        markerfacecolor="none" if failed else col,
                         elinewidth=2.2, capsize=3.5, zorder=3)
         # faint prior +/-sigma reference, drawn like an error bar so its length vs the posterior bars IS sigma_post/sigma_prior
         ax.errorbar(pmean, y_prior, xerr=sig_prior, fmt="none", ecolor="0.6", elinewidth=2.4, capsize=6, zorder=2)
@@ -97,8 +111,9 @@ def main(summary="scan_robust_500/summary.csv", out="scan_robust_500/robustness_
     axo.axvline(0.5, color="0.55", lw=1.0, ls="--", zorder=1)
     for yp, key in zip(yplot, keys):
         pg, pt = float(S[key]["P(gs<gl)"]), float(S[key]["P(ts>tl)"])
-        axo.plot(pg, yp, "o", ms=9, color=C_GORD, zorder=3)
-        axo.plot(pt, yp, "s", ms=8.5, color=C_TORD, zorder=3)
+        failed = S[key].get("converged", "").lower() == "false"
+        axo.plot(pg, yp, "o", ms=9, color=C_GORD, markerfacecolor="none" if failed else C_GORD, zorder=3)
+        axo.plot(pt, yp, "s", ms=8.5, color=C_TORD, markerfacecolor="none" if failed else C_TORD, zorder=3)
     for b in bnd:
         axo.axhline(b, color="0.9", lw=0.8, zorder=0)
     axo.axhline((yplot.max() + y_prior) / 2, color="0.8", lw=0.8, zorder=0)
@@ -113,7 +128,10 @@ def main(summary="scan_robust_500/summary.csv", out="scan_robust_500/robustness_
     fig.legend(handles=[mlines.Line2D([], [], marker="o", ls="none", color=c, label=gn)
                         for gn, _, c in present_groups],
                loc="upper center", ncol=len(present_groups), bbox_to_anchor=(0.5, 1.0), columnspacing=1.6)
-    fig.tight_layout(rect=(0, 0, 1, 0.88))
+    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
+    if any(row.get("converged", "").lower() == "false" for row in S.values()):
+        fig.text(.5,.005,"Exploratory robustness comparison: open markers fail MCMC convergence checks",
+                 ha="center",va="bottom",fontsize=14,color=C_DATA)
     fig.savefig(out); plt.close(fig)
     print(f"wrote {out}")
 

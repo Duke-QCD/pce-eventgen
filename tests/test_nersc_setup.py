@@ -45,7 +45,9 @@ class NerscSetupTests(unittest.TestCase):
         for path in (self.software, self.data, self.output, self.raw):
             self.assertFalse(path.exists())
         originals = {p.name: p.read_bytes() for p in self.profile.iterdir()}
-        self.generate(code=2)
+        result = self.generate(code=2)
+        self.assertIn('Profile already exists:', result.stderr)
+        self.assertIn('No files were changed.', result.stderr)
         self.assertEqual(originals, {p.name: p.read_bytes() for p in self.profile.iterdir()})
 
     def test_runtime_module_selection_is_saved_in_personal_paths(self):
@@ -86,6 +88,16 @@ printf '%s' "$HIC_RUNTIME_GCC_MODULE"
         self.assertEqual(config['cache']['account'], 'new-project')
         self.assertEqual(config['run']['row_end'], '0')
         self.assertEqual(config['run']['nevents'], '2')
+        for section in ('submit', 'cache'):
+            self.assertEqual(config[section]['qos'], 'debug')
+            self.assertEqual(config[section]['time'], '00:30:00')
+        launcher = (self.profile / 'pce-eventgen').read_text()
+        self.assertIn('#SBATCH --qos=debug\n', launcher)
+        self.assertIn('#SBATCH --time=00:30:00\n', launcher)
+        self.assertEqual(config['submit']['ntasks_per_node'], '2')
+        self.assertEqual(config['submit']['cpus_per_task'], '32')
+        self.assertIn('#SBATCH --ntasks-per-node=2\n', launcher)
+        self.assertIn('#SBATCH --cpus-per-task=32\n', launcher)
         self.assertEqual(config['repair']['archive_base'], str(self.raw.parent))
         self.assertEqual(config['pipeline']['cache_manifest'], str(self.output / 'records/smoke/cache.manifest'))
         self.assertEqual(config['pipeline']['reap_manifest'], str(self.output / 'records/smoke/reap_ready.manifest'))
@@ -97,6 +109,22 @@ printf '%s' "$HIC_RUNTIME_GCC_MODULE"
         for text in [p.read_text() for p in self.profile.iterdir()]:
             self.assertNotIn('{{', text)
         self.assertFalse(self.raw.exists())
+
+    def test_production_keeps_its_generation_and_cache_resource_defaults(self):
+        command = list(self.command)
+        command[command.index('--nevents') + 1] = '10000'
+        self.generate(command)
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(self.profile / 'calibration.ini')
+        self.assertEqual(config['submit']['qos'], 'regular')
+        self.assertEqual(config['submit']['time'], '00:10:00')
+        self.assertEqual(config['cache']['qos'], 'regular')
+        self.assertEqual(config['cache']['time'], '04:00:00')
+        self.assertEqual(config['submit']['ntasks_per_node'], '16')
+        self.assertEqual(config['submit']['cpus_per_task'], '16')
+        launcher = (self.profile / 'pce-eventgen').read_text()
+        self.assertIn('#SBATCH --qos=regular\n', launcher)
+        self.assertIn('#SBATCH --time=00:10:00\n', launcher)
 
     def test_personal_paths_use_the_canonical_data_layout(self):
         self.generate()
@@ -197,16 +225,22 @@ exec "$2" "$3" --config "$4" initialize --apply
 from pathlib import Path
 keys = ['CONDA_PREFIX', 'HIC_CODE_HOME', 'HIC_SOFTWARE_ROOT', 'HIC_CFS_ROOT',
         'HIC_SURFACE_ARCHIVE_ROOT', 'HIC_PDG_MASS', 'HIC_RAW_ROOT', 'PYTHONNOUSERSITE',
-        'HIC_RUNTIME_GCC_MODULE']
+        'HIC_RUNTIME_GCC_MODULE', 'OMP_NUM_THREADS', 'OMP_PLACES', 'OMP_PROC_BIND',
+        'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS']
 Path(os.environ['CAPTURE_SETUP']).write_text(json.dumps(dict(args=sys.argv[1:], env={k: os.getenv(k) for k in keys})))
 ''')
         srun.chmod(0o755)
         env = {**self.env, 'PATH': str(tools) + os.pathsep + self.env['PATH'],
                'RUNDIR': str(self.raw / 'design_000/AuAu200'), 'NERSC_HOST': 'fixture',
-               'SLURM_JOB_ID': '123', 'SLURM_NTASKS': '1', 'NEVENTS': '2',
+               'SLURM_JOB_ID': '123', 'SLURM_NTASKS': '2', 'SLURM_CPUS_PER_TASK': '32',
+               'NEVENTS': '2',
                'CAPTURE_SETUP': str(capture),
-               'LOG_ROOT': str(self.root / 'event-logs'), 'BASH_FUNC_module%%': '() { return 0; }',
+               'LOG_ROOT': str(self.root / 'event-logs'),
+               # This system has CPU/Conda modules, but no GSL module.
+               'BASH_FUNC_module%%': '() { [[ "$*" == "load conda" || "$*" == "load cpu" ]]; }',
                'BASH_FUNC_conda%%': '() { [[ $1 == activate ]] && export CONDA_PREFIX="$2"; }'}
+        for key in ('OMP_NUM_THREADS', 'OMP_PLACES', 'OMP_PROC_BIND'):
+            env.pop(key, None)
         result = subprocess.run(['bash', str(self.profile / 'pce-eventgen')], env=env,
                                 capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -219,7 +253,22 @@ Path(os.environ['CAPTURE_SETUP']).write_text(json.dumps(dict(args=sys.argv[1:], 
         self.assertEqual(actual['env']['HIC_RAW_ROOT'], str(self.raw))
         self.assertEqual(actual['env']['PYTHONNOUSERSITE'], '1')
         self.assertEqual(actual['env']['HIC_RUNTIME_GCC_MODULE'], 'gcc-native/13')
+        self.assertEqual(actual['env']['OMP_NUM_THREADS'], '16')
+        self.assertEqual(actual['env']['OMP_PLACES'], 'cores')
+        self.assertEqual(actual['env']['OMP_PROC_BIND'], 'spread')
+        self.assertEqual(actual['env']['OPENBLAS_NUM_THREADS'], '1')
+        self.assertEqual(actual['env']['MKL_NUM_THREADS'], '1')
+        self.assertIn('--cpu-bind=cores', actual['args'])
         self.assertIn('run-events-wrapper', actual['args'])
+
+        # Allocation sizes control threads even if the submitter's shell is stale.
+        for cpus, selected, expected in (('32', '2', '16'), ('2', '64', '1'), ('1', '', '1')):
+            override = dict(env, SLURM_CPUS_PER_TASK=cpus, OMP_NUM_THREADS=selected)
+            result = subprocess.run(['bash', str(self.profile / 'pce-eventgen')], env=override,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            actual = json.loads(capture.read_text())
+            self.assertEqual(actual['env']['OMP_NUM_THREADS'], expected)
 
     def test_generated_shells_parse_and_unresolved_paths_fail_before_writes(self):
         self.generate()
@@ -254,7 +303,9 @@ os.execvp(args[0], args)
         wrapper.write_text(f'#!{sys.executable}\n' + '''import json, os, sys
 from pathlib import Path
 keys = ['CONDA_PREFIX', 'XDG_DATA_HOME', 'HIC_SOFTWARE_ROOT', 'HIC_CFS_ROOT',
-        'HIC_RAW_ROOT', 'HIC_SURFACE_ARCHIVE_ROOT', 'PYTHONNOUSERSITE', 'HIC_RUNTIME_GCC_MODULE']
+        'HIC_RAW_ROOT', 'HIC_SURFACE_ARCHIVE_ROOT', 'PYTHONNOUSERSITE', 'HIC_RUNTIME_GCC_MODULE',
+        'OMP_NUM_THREADS', 'OMP_PLACES', 'OMP_PROC_BIND', 'OPENBLAS_NUM_THREADS',
+        'REPO', 'CFG', 'PROJECT']
 Path(os.environ['CAPTURE_SETUP']).write_text(json.dumps(dict(
     runner=sys.argv[0], args=sys.argv[1:], env={k: os.getenv(k) for k in keys})))
 ''')
@@ -266,7 +317,9 @@ Path(os.environ['CAPTURE_SETUP']).write_text(json.dumps(dict(
         wrong_wrapper.chmod(0o755)
         env = {**self.env, 'PATH': str(tools) + os.pathsep + self.env['PATH'],
                'SLURM_JOB_ID': '123', 'CAPTURE_SETUP': str(capture),
-               'BASH_FUNC_module%%': '() { return 0; }',
+               'REPO': '/old-checkout', 'CFG': '/old-profile.ini', 'PROJECT': 'old-account',
+               'OMP_NUM_THREADS': '64', 'OPENBLAS_NUM_THREADS': '32',
+               'BASH_FUNC_module%%': '() { [[ "$*" == "load conda" || "$*" == "load cpu" ]]; }',
                'BASH_FUNC_conda%%': '''() {
     [[ $1 == activate ]] || return 1
     export CONDA_PREFIX="$2"
@@ -290,6 +343,13 @@ exec "$3" "$4" --config "$HIC_CAMPAIGN_CONFIG" fill "$5"
         self.assertEqual(actual['env']['HIC_SURFACE_ARCHIVE_ROOT'], str(self.output / 'surface_archive'))
         self.assertEqual(actual['env']['PYTHONNOUSERSITE'], '1')
         self.assertEqual(actual['env']['HIC_RUNTIME_GCC_MODULE'], '')
+        self.assertEqual(actual['env']['OMP_NUM_THREADS'], '16')
+        self.assertEqual(actual['env']['OMP_PLACES'], 'cores')
+        self.assertEqual(actual['env']['OMP_PROC_BIND'], 'spread')
+        self.assertEqual(actual['env']['OPENBLAS_NUM_THREADS'], '1')
+        self.assertEqual(actual['env']['REPO'], str(ROOT))
+        self.assertEqual(actual['env']['CFG'], str(self.profile / 'calibration.ini'))
+        self.assertEqual(actual['env']['PROJECT'], 'new-project')
         self.assertEqual(actual['args'][-1], str(rundir))
         self.assertEqual(actual['args'][actual['args'].index('--nevents') + 1], '2')
 

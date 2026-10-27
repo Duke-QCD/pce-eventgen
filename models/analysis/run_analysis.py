@@ -69,7 +69,7 @@ def discover_designs(cache_root, system, pattern):
 
 
 def artifact_prefix(out_dir, design, system):
-    return os.path.join(out_dir, f"{design}_{system}_stageA")
+    return os.path.join(out_dir, f"{design}_{system}_observables")
 
 
 def is_done(out_dir, design, system):
@@ -110,7 +110,9 @@ def select(a):
     for d in designs:
         sx.validate_cache_scope(os.path.join(a.cache_root, d, a.system), a.expected_scope, a.zstd)
         if not a.force and is_done(a.out_dir, d, a.system):
-            sx.validate_artifact_scope(artifact_prefix(a.out_dir, d, a.system), a.expected_scope)
+            prefix = artifact_prefix(a.out_dir, d, a.system)
+            existing_meta = sx.validate_artifact_scope(prefix, a.expected_scope)
+            sx.assert_analysis_profile(existing_meta, a.analysis_profile, prefix)
     if not a.force:
         designs = [d for d in designs if not is_done(a.out_dir, d, a.system)]
     return designs
@@ -128,6 +130,7 @@ def _cmd(a, design):
         c.append("--validate")
     if a.allow_unverified:
         c.append("--allow-unverified")
+    c.extend(["--analysis-profile", a.analysis_profile])
     return c
 
 
@@ -207,6 +210,7 @@ def cmd_audit(a):
             continue
         try:
             m = sx.validate_artifact_scope(p, a.expected_scope)
+            sx.assert_analysis_profile(m, a.analysis_profile, p)
             ne = int(m.get("n_events", 0))
             complete.append((d, ne, int(m.get("n_zero_events", 0))))
             if ne <= 0:
@@ -237,9 +241,9 @@ def cmd_audit(a):
 
 
 def _artifact_name_index(npz_path, system):
-    """design_067_AuAu200_stageA.npz -> ('design_067', 67)."""
+    """design_067_AuAu200_observables.npz -> ('design_067', 67)."""
     base = os.path.basename(npz_path)
-    tail = f"_{system}_stageA.npz"
+    tail = f"_{system}_observables.npz"
     name = base[:-len(tail)] if base.endswith(tail) else base
     m = re.search(r"(\d+)$", name)
     return name, (int(m.group(1)) if m else None)
@@ -272,7 +276,7 @@ def cmd_aggregate(a):
     from reduce_observables import reduce_all, COMBOS, load_artifact
 
     out_dir = os.path.abspath(a.out_dir)
-    arts = sorted(glob.glob(os.path.join(out_dir, f"*_{a.system}_stageA.npz")))
+    arts = sorted(glob.glob(os.path.join(out_dir, f"*_{a.system}_observables.npz")))
     designs = []
     for npz in arts:
         meta = npz[:-len(".npz")] + ".meta.json"
@@ -281,16 +285,25 @@ def cmd_aggregate(a):
         name, idx = _artifact_name_index(npz, a.system)
         designs.append(((idx if idx is not None else 1 << 30), name, npz, meta))
     designs.sort()
-    if a.start_index is not None:
-        designs = [d for d in designs if d[0] >= a.start_index]
-    if a.end_index is not None:
-        designs = [d for d in designs if d[0] <= a.end_index]
+    if a.designs:
+        missing = set(a.designs) - {d[1] for d in designs}
+        if missing:
+            sys.exit("requested designs have no complete analysis artifact: "
+                     + " ".join(sorted(missing, key=_natkey)))
+        designs = [d for d in designs if d[1] in set(a.designs)]
+    else:
+        if a.start_index is not None:
+            designs = [d for d in designs if d[0] >= a.start_index]
+        if a.end_index is not None:
+            designs = [d for d in designs if d[0] <= a.end_index]
     if not designs:
         sys.exit(f"no per-design analysis artifacts (.npz + .meta.json) under {out_dir}")
 
     # Different fingerprints can have identical array shapes. Reject mixed
     # scopes before reduction rather than silently combine different flow cuts.
     scope_hash, scope_fingerprint = None, None
+    selected_analysis_profile = None
+    source_analysis_profiles = set()
     from extract_observables import _canonical_fingerprint_hash
     for _, name, _, meta_path in designs:
         with open(meta_path) as f:
@@ -305,15 +318,27 @@ def cmd_aggregate(a):
             sys.exit(f"{name}: mixed cache fingerprints in one model matrix; use separate output directories")
         sx.assert_expected_scope(fp, a.expected_scope, name)
         scope_hash, scope_fingerprint = digest, fp
+        sx.assert_analysis_profile(artifact_meta, a.analysis_profile, name)
+        profile = sx.analysis_profile(artifact_meta)
+        source_analysis_profiles.add(artifact_meta.get("analysis_profile", "baseline"))
+        if selected_analysis_profile is not None and profile != selected_analysis_profile:
+            sys.exit(f"{name}: mixed analysis profiles; re-extract consistently into a new output directory")
+        selected_analysis_profile = profile
 
-    edges = list(a.bin_edges) if a.bin_edges else list(range(0, 105, 5))   # 20 x 5% bins, 0-100%
+    edges = (list(a.bin_edges) if a.bin_edges else
+             list(sx.OO_DEFAULT_CENTRALITY_EDGES) if selected_analysis_profile == sx.OO_ANALYSIS_PROFILE
+             else list(range(0, 105, 5)))
     combo_names = list(COMBOS.keys())
 
     labels, bin_pairs = None, None
     Y, Yerr, didx, dname, failures = [], [], [], [], []
+    flow_sample_usage = []
     n = len(designs)
     _say(f"Aggregating {n} design(s) | estimator={a.estimator} | "
-         f"{len(edges)-1} centrality bins | n_boot={a.n_boot}")
+         f"{len(edges)-1} centrality bins | n_boot={a.n_boot} | profile={selected_analysis_profile}")
+    if selected_analysis_profile == sx.OO_ANALYSIS_PROFILE:
+        _say("OO profile: charged c2_gap/c3_gap mean cross_full with same_full fallback at k=1; "
+             "charged mean_pT uses 0.27<pT<5 GeV with flat-bin interpolation.")
     for i, (idx, name, npz, meta) in enumerate(designs, 1):
         _say(f"[{i}/{n}] {name}")          # printed BEFORE load, so a hang shows the culprit design
         try:
@@ -324,6 +349,20 @@ def cmd_aggregate(a):
                              weighting="equal_event", y_window=a.y_window,
                              charged_window=a.charged_window)
             groups = _feature_groups(m["species_yhist"], combo_names)
+            oo_adjusted = selected_analysis_profile == sx.OO_ANALYSIS_PROFILE
+            if oo_adjusted:
+                for b in red["bins"]:
+                    charged = b["observables"].get("charged", {})
+                    for harmonic in (2, 3):
+                        canonical = charged.get(f"c{harmonic}_cross_full")
+                        if canonical is None or not np.allclose(
+                                canonical, charged.get(f"c{harmonic}_gap", [np.nan, np.nan]),
+                                rtol=0, atol=0):
+                            raise ValueError("OO cross_full output missing/invalid; re-extract with the selected analysis profile")
+                    for observable in ("mean_pT", "c2_gap", "c3_gap"):
+                        if not np.all(np.isfinite(charged[observable])):
+                            raise ValueError(f"Undefined adjusted charged {observable} in "
+                                             f"{b['cent_low']}-{b['cent_high']}%")
             # Charged cumulants must be emitted by reduce_all; a missing key would otherwise become
             # a silent all-NaN column that poisons inference. Derive the requirement FROM the
             # whitelist so it auto-tracks if a c{n}_gap is added/removed (one source of truth).
@@ -351,6 +390,14 @@ def cmd_aggregate(a):
                 raise ValueError(f"feature count {len(row)} != expected {len(labels)} "
                                  "(centrality binning differs across designs?)")
             Y.append(row); Yerr.append(erow); didx.append(idx); dname.append(name)
+            if oo_adjusted:
+                flow_sample_usage.append({
+                    "design_index": idx, "design_name": name,
+                    "same_full_fallback_events_total": int(np.count_nonzero(out["nsub_used"] == 1)),
+                    "bins": [{"cent_low": b["cent_low"], "cent_high": b["cent_high"],
+                              "n_events": b["n_events"], **b["charged_flow_sample_usage"]}
+                             for b in red["bins"]],
+                })
         except Exception as ex:
             failures.append([name, str(ex)])
             _say(f"  SKIP {name}: {ex}")
@@ -368,6 +415,8 @@ def cmd_aggregate(a):
 
     meta_out = {
         "schema": "model_matrix/v1",
+        "analysis_profile": selected_analysis_profile,
+        "source_analysis_profiles": sorted(source_analysis_profiles),
         "cache_fingerprint_hash": scope_hash,
         "cache_fingerprint": scope_fingerprint,
         "n_designs": int(Y.shape[0]), "n_features": int(Y.shape[1]),
@@ -399,6 +448,23 @@ def cmd_aggregate(a):
         "source_artifacts_dir": out_dir, "system": a.system,
         "n_failed": len(failures), "failed": failures,
     }
+    if selected_analysis_profile == sx.OO_ANALYSIS_PROFILE:
+        meta_out.update(sx.oo_observable_definitions())
+        meta_out["charged_flow_sample_usage"] = flow_sample_usage
+        meta_out["vn_note"] = (
+            "Charged n=2,3 use cross_full, with same_full fallback at k=1; v_n=sqrt(c_n) when positive. "
+            "Charged n=4 and all identified flow retain the original gap calculations.")
+        meta_out["flow_calibration_note"] = (
+            "Keep the existing charged c2_gap/c3_gap inference selections: these legacy column labels "
+            "now mean signed cross_full cumulants with same_full fallback at k=1. "
+            "The cross_full estimator is a provisional proxy for the experimental gap measurement. "
+            "Compare with data c=v^2 and sigma_c approximately 2*v*sigma_v. "
+            "No species, bins or other likelihood selections are changed by this patch.")
+        count = sum(d["same_full_fallback_events_total"] for d in flow_sample_usage)
+        fractions = [b["same_full_pair_weight_fraction"] for d in flow_sample_usage for b in d["bins"]
+                     if b["same_full_pair_weight_fraction"] is not None]
+        _say(f"k=1 same_full fallback: {count} events; largest bin pair-weight fraction "
+             f"{max(fractions, default=0.0):.3%}. Details in matrix metadata.")
     with open(mout[:-len(".npz")] + ".meta.json", "w") as f:
         _json.dump(meta_out, f, indent=2)
 
@@ -720,14 +786,14 @@ def main():
     agp = sub.add_parser("aggregate",
                          help="Reduce all per-design analysis artifacts and stack into the emulator model matrix.")
     agp.add_argument("--out-dir", required=True,
-                     help="Directory containing <design>_<system>_stageA.npz artifacts.")
+                     help="Directory containing <design>_<system>_observables.npz artifacts.")
     agp.add_argument("--system", default=DEFAULT_SYSTEM)
     agp.add_argument("--matrix-out", default=None,
                      help="Output .npz path (default <out-dir>/model_matrix.npz).")
     agp.add_argument("--estimator", default="cent_ch_eta10",
                      help="Centrality estimator column (default cent_ch_eta10, |eta|<1.0).")
     agp.add_argument("--bin-edges", type=float, nargs="*", default=None,
-                     help="Centrality percentile edges (default 0,5,...,100 = 20 bins).")
+                     help="Centrality edges (OO profile default: 0,1,2,3,4,5,10,...,80; baseline: 0,5,...,100).")
     agp.add_argument("--y-window", type=float, default=0.5, help="Identified dN/dy half-window.")
     agp.add_argument("--charged-window", default="eta05", choices=["eta05", "eta10"])
     agp.add_argument("--n-boot", type=int, default=0,
@@ -735,6 +801,8 @@ def main():
                           "(0 = analytic jackknife/SEM, fast; >0 = slower event bootstrap).")
     agp.add_argument("--start-index", type=int, default=None)
     agp.add_argument("--end-index", type=int, default=None)
+    agp.add_argument("--designs", nargs="+",
+                     help="Aggregate only these design names; overrides index bounds. Missing artifacts are errors.")
     agp.add_argument("--no-csv", action="store_true", help="Skip the long-format inspection CSV.")
     agp.set_defaults(func=cmd_aggregate)
 
@@ -765,6 +833,8 @@ def main():
     fdp.add_argument("--zstd", default="zstd")
     fdp.set_defaults(func=cmd_feeddown)
 
+    for parser in (rp, aup, agp):
+        sx.add_analysis_profile_argument(parser)
     for parser in (rp, aup, agp, fdp):
         parser.add_argument("--expected-fingerprint",
                             default=os.environ.get("HIC_EXPECTED_FINGERPRINT_V3"),

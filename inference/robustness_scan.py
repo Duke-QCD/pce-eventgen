@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Robustness scan for the primary (Lambda/proton-excluded) fugacity determination: observable
+"""System-aware observable-group robustness scan for AuAu200 or OO5360.
+
+O-O accepts --oo-yield-proxies and --drop-specs, including an empty exclusion
+list for the all-optional fit. Each variant reassembles the selected joint
+covariance, retrains its emulator and samples all active parameters.
+
+Legacy AuAu200 primary (Lambda/proton-excluded) fugacity determination: observable
 jackknife only. Drops one observable GROUP at a time from the likelihood (re-assembles + re-trains
 the emulator on the remaining set, full 14-D free, current production defaults -- Matern nu=1.5 +
 per-observable variance inflation) and tabulates gamma_s_0/gamma_l_0/tau_l/tau_s/eta_min so we can
@@ -25,13 +31,15 @@ ORDERINGS = (("P(gs<gl)", "gamma_s_0", "gamma_l_0", "lt"),            # equilibr
              ("P(ts>tl)", "tau_s", "tau_l", "gt"))
 
 
-def variant_list(smoke):
+def variant_list(smoke, specs=None):
+    specs = JACKKNIFE_SPECS if specs is None else list(specs)
     if smoke:
+        example = next((name for name in specs if name.startswith("dN_dy_Xi")), specs[0])
         return [("baseline",              (),                     "baseline"),
-                ("drop_dN_dy_Xi",          ("dN_dy_Xi",),          "re-assemble/re-train path"),
-                ("BROKEN_drop_everything", tuple(JACKKNIFE_SPECS), "everything dropped -> fail-soft test")]
+                (f"drop_{example}",        (example,),            "re-assemble/re-train path"),
+                ("BROKEN_drop_everything", tuple(specs),          "everything dropped -> fail-soft test")]
     V = [("baseline", (), "baseline")]
-    for sp in JACKKNIFE_SPECS:
+    for sp in specs:
         V.append((f"drop_{sp}", (sp,), "observable jackknife"))
     return V
 
@@ -63,33 +71,67 @@ def write_summary(out_root, rows):
         print(f"  {label:24s} {status:11s}{cells}{ocells}")
     with open(os.path.join(out_root, "summary.csv"), "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["variant", "status"] + [f"{p}_{q}" for p in REPORT for q in ("q16", "q50", "q84")] + ordtags)
+        diagnostic_fields = ["converged", "max_rank_rhat", "min_bulk_ess", "min_tail_ess"]
+        w.writerow(["variant", "status"] + [f"{p}_{q}" for p in REPORT for q in ("q16", "q50", "q84")] + ordtags + diagnostic_fields)
         for label, status, med, order in rows:
             r = [label, status]
             for p in REPORT:
                 r += list(med[p]) if (med and p in med) else ["", "", ""]
             r += [order[t] if (order and t in order) else "" for t in ordtags]
+            path = os.path.join(out_root, label, f"{I.OUT_PREFIX}_diagnostics.json")
+            diagnostics = json.load(open(path)) if os.path.exists(path) else None
+            if diagnostics:
+                params = diagnostics["parameters"]
+                def extreme(key, function):
+                    values = [p[key] for p in params]
+                    return function(values) if all(v is not None for v in values) else ""
+                r += [diagnostics["converged"], extreme("rank_rhat", max),
+                      extreme("bulk_ess", min), extreme("tail_ess", min)]
+            else:
+                r += [""] * len(diagnostic_fields)
             w.writerow(r)
     nfail = sum(1 for r in rows if r[1] not in ("ok", "resumed", "expected_failure"))
     print(f"wrote {out_root}/summary.csv  ({len(rows)} variants, {nfail} failed)")
 
 
 def run(smoke, out_root, nsteps, nsplits, *, matrix=None, design=None, data_dir=None,
-        nburn=I.NBURN, nwalkers=I.NWALKERS, seed=I.SEED, refit=False):
-    I.use_system("AuAu200")
+        nburn=I.NBURN, nwalkers=I.NWALKERS, seed=I.SEED, refit=False,
+        system="AuAu200", drop_specs=None, oo_yield_proxies=False,
+        only_variants=None, dry_run=False):
+    I.use_system(system)
+    if oo_yield_proxies:
+        I.enable_oo_yield_proxies()
     I.validate_run_sizes(nsteps, nburn, nwalkers, nsplits)
-    variants = variant_list(smoke)
+    base_drop = tuple(I.SYSTEM_DROP if drop_specs is None else drop_specs)
+    known = {s["name"] for s in I.DATA_SPEC}
+    if set(base_drop) - known:
+        raise ValueError(f"Unknown excluded observables: {sorted(set(base_drop) - known)}")
+    specs = [s["name"] for s in I.DATA_SPEC if s["name"] not in base_drop]
+    if not specs:
+        raise ValueError("No observables available for robustness variants.")
+    variants = variant_list(smoke, specs)
+    if only_variants is not None:
+        selected = set(only_variants)
+        unknown = selected - {v[0] for v in variants}
+        if unknown:
+            raise ValueError(f"Unknown variants: {sorted(unknown)}")
+        variants = [v for v in variants if v[0] in selected]
+    if dry_run:
+        for label, extra_drop, _ in variants:
+            print(f"{system} {label}: exclude {','.join(base_drop + tuple(extra_drop)) or 'none'}; "
+                  f"proxies={oo_yield_proxies}; {nwalkers} walkers, {nburn}+{nsteps} steps, {nsplits} folds")
+        return 0
     os.makedirs(out_root, exist_ok=True)
     I.FIXED_PARAMS = {}   # all 14 params always free -- this scan only varies the observable set
     rows = []
     failures = 0
     for label, extra_drop, note in variants:
         d = os.path.join(out_root, label)
-        pnpz = os.path.join(d, "auau_posterior.npz")
+        pnpz = os.path.join(d, f"{I.OUT_PREFIX}_posterior.npz")
         print(f"\n{'#'*72}\n# variant: {label:24s} ({note}) -> {d}\n{'#'*72}")
         expected_failure = smoke and label == "BROKEN_drop_everything"
         try:
-            drop = BASE_DROP + tuple(extra_drop)
+            drop = base_drop + tuple(extra_drop)
             if os.path.exists(pnpz) and not refit:
                 result = I.read_npz(pnpz)
                 config = I.input_config(matrix, design, data_dir, drop, feeddown="")
@@ -124,8 +166,8 @@ def run(smoke, out_root, nsteps, nsplits, *, matrix=None, design=None, data_dir=
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="AuAu200 observable-jackknife robustness scan (all 14 free)")
-    I.add_input_arguments(ap, system=False, feeddown=False, drops=False)
+    ap = argparse.ArgumentParser(description="Observable-jackknife robustness scan (all active parameters free)")
+    I.add_input_arguments(ap, feeddown=False, proxies=True)
     ap.add_argument("--smoke", action="store_true", help="Two fits plus an intentional empty-observable failure.")
     ap.add_argument("--out-root")
     ap.add_argument("--nsteps", type=int, help="Post-burn steps (15000; smoke: 300).")
@@ -134,13 +176,20 @@ def main(argv=None):
     ap.add_argument("--nsplits", type=int, help="Closure folds (8; smoke: 2).")
     ap.add_argument("--seed", type=int, default=I.SEED)
     ap.add_argument("--refit", action="store_true", help="Explicitly overwrite existing variant fits.")
+    ap.add_argument("--only-variants", help="Comma-separated variant names. Concurrent invocations require distinct output roots.")
+    ap.add_argument("--dry-run", action="store_true", help="Print the selected variants without fitting or writing.")
     a = ap.parse_args(argv)
-    return run(a.smoke, a.out_root or ("scan_smoke" if a.smoke else "scan_robust_500"),
+    default_root = ("scan_smoke" if a.smoke else "scan_robust_500") if a.system == "AuAu200" else f"scan_robust_{a.system}"
+    return run(a.smoke, a.out_root or default_root,
                a.nsteps if a.nsteps is not None else (300 if a.smoke else 15000),
                a.nsplits if a.nsplits is not None else (2 if a.smoke else 8),
                matrix=a.matrix, design=a.design, data_dir=a.data_dir,
                nburn=a.nburn if a.nburn is not None else (100 if a.smoke else I.NBURN),
-               nwalkers=a.nwalkers, seed=a.seed, refit=a.refit)
+               nwalkers=a.nwalkers, seed=a.seed, refit=a.refit, system=a.system,
+               drop_specs=None if a.drop_specs is None else I.split_specs(a.drop_specs),
+               oo_yield_proxies=a.oo_yield_proxies,
+               only_variants=None if a.only_variants is None else I.split_specs(a.only_variants),
+               dry_run=a.dry_run)
 
 
 if __name__ == "__main__":

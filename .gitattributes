@@ -1,0 +1,11 @@
+# Scientific artifacts must not undergo text conversion or whitespace checks.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.npz binary
+*.npy binary
+*.h5 binary
+*.hdf5 binary
+*.gz binary
+*.zip binary

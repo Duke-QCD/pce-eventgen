@@ -1,58 +1,28 @@
 # NERSC campaign guide
 
-For a first encounter with the code, start with the [handbook](README.md)
-and [first-run tutorial](getting-started.md). During a campaign, use the
-[command/flag reference](reference/commands.md),
-[INI key reference](reference/configuration.md), and
-[troubleshooting guide](troubleshooting.md) alongside this procedure.
+Complete [NERSC setup](../nersc/SETUP.md) first. This guide operates an initialized installation through generation → survey → cache/publish → review/optional reap → analysis. Use the [command reference](reference/commands.md), [INI reference](reference/configuration.md) and [troubleshooting](troubleshooting.md) as needed.
 
-The maintained sequence is initialization/generation → survey → cache/publish →
-review/reap → observable extraction/aggregation. `models/campaign.py` dispatches
-the existing tools using one campaign INI. Inference remains separate.
-
-Start with [NERSC setup](../nersc/SETUP.md) for an installation and personal profile.
-Use the [OSG runbook](osg-campaign.md) for AP staging, HTCondor
-submission and draining. OSG output joins this workflow at the NERSC raw tree;
-keep NERSC and OSG generation in separately owned designs.
+For OSG generation, follow its [runbook](osg-campaign.md), then join here at the raw survey. Assign whole designs to one generation platform. Inference runs separately.
 
 ## Select your profile
 
-Run every command from the repository root with your profile active. Commands
-that submit jobs, change event directories or delete data only preview unless
-given `--submit` (or `--apply` for `repair` and `initialize`). For a generated
-personal profile:
+Run every command from the repository root with your profile active. `events`, `cache`, `reap` and `analysis run` preview until `--submit`; `repair` and `initialize` act with `--apply`. Other commands, including `fill`, can execute or write immediately; see [command effects](reference/commands.md#campaign-commands-and-their-effects). For a generated personal profile:
 
 ```bash
 cd "$HOME/pce-eventgen"                     # adjust to your checkout
 export PROFILE="$PWD/config/users/$USER-production"  # use $USER-smoke for setup's smoke campaign
 source "$PROFILE/activate.sh"
-export CFG="$HIC_CAMPAIGN_CONFIG"
 ```
 
-Each new shell and allocation needs the profile activated again. Cache commands
-take their acceptance cuts from the INI's fingerprint, so no other environment
-file is needed.
+Activate the same profile in every shell/allocation. Activation sets `REPO`, `CFG`, `PROJECT`, runtime paths and Python thread limits. Cache cuts come from its INI-selected fingerprint, so no separate cache environment file is needed.
 
-A generated profile starts at design row 0, initializes new designs, refuses to
-touch existing design directories unless `--allow-existing` is given, and
-applies repairs and archive finalization when a command acts. Inspect the INI
-before using it. For small smoke campaigns, apply the resource and bin settings
-in [setup section 6](../nersc/SETUP.md#6-run-the-isolated-two-event-smoke-campaign)
-first. Use the same `$CFG` throughout a campaign.
+Inspect the INI: generated profiles select row 0, enable initialization and applied repairs/archive finalization, and protect existing designs. Use [setup's resource/bin overrides](../nersc/SETUP.md#6-run-the-isolated-two-event-smoke-campaign) for smoke runs.
 
-To look up backend options, append `--help` to the relevant command, for example
-`python models/campaign.py --config "$CFG" cache --help` or
-`python models/campaign.py --config "$CFG" analysis run --help`.
+Append `--help` to a command for its backend options, for example `python models/campaign.py cache --help`.
 
 ### 1. Generate or resume events
 
-Before submitting, set `OMP_NUM_THREADS` to the selected `[submit] cpus_per_task`
-and set `OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1`; the launcher inherits those
-values. For setup's two-CPU smoke layout, use `export OMP_NUM_THREADS=2
-OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1`. Production layouts may need a different
-OpenMP count. Initialization runs TRENTo, so use the
-[compute-step example in setup](../nersc/SETUP.md#6-run-the-isolated-two-event-smoke-campaign)
-for compute-targeted builds or substantial initialization work.
+Set generation resources in `[submit]`; the launcher derives its OpenMP count from the actual Slurm CPUs per task and sets core binding automatically. With `cpus_per_task = 32` and `ntasks_per_node = 2`, each worker uses 16 OpenMP threads. Python library thread limits come from the profile; no manual thread exports are required. These batch resources are separate from the small initializer/submission step. Initialization runs TRENTo, so use [setup's compute step](../nersc/SETUP.md#6-run-the-isolated-two-event-smoke-campaign) for compute-targeted builds or substantial initialization.
 
 ```bash
 python models/campaign.py --config "$CFG" events --print-config   # resolved settings only
@@ -60,13 +30,7 @@ python models/campaign.py --config "$CFG" events                  # preview
 python models/campaign.py --config "$CFG" events --submit         # act
 ```
 
-`--print-config` prints the resolved options and exits. The preview lists the
-designs that would be initialized, runs repair as a dry-run audit and prints
-each design's route and the `sbatch` commands it would issue, without changing
-event directories or submitting anything. `--submit` initializes new designs
-(when `[run] initialize = true`), runs the repair pass (applied when `[repair]
-apply_repairs = true`), chooses each design's mode and submits the jobs. Wait
-for those jobs before modifying or caching the selected designs.
+`--print-config` prints settings and exits. The preview lists initialization, audits repair and prints routes/Slurm commands. `--submit` initializes new designs when enabled, applies the configured repair policy and submits selected modes. Wait for jobs before modifying or caching their designs.
 
 Keep each reported `Submitted batch job ...` ID. On the login node:
 
@@ -75,26 +39,17 @@ squeue -u "$USER"
 sacct -j 12345678 --format=JobID,State,ExitCode,Elapsed  # replace with the reported job ID
 ```
 
-Do not treat an absent queue entry, an exit code of zero, or the submitter
-returning as proof of complete generation. Inspect the job logs and the terminal
-event counts in step 2. A short walltime can leave valid partial progress.
+Submission success, queue disappearance and exit zero do not prove completion. Inspect logs and the terminal counts in step 2; walltime expiry can leave partial progress.
 
-`[run] row_start` and `row_end` are zero-based design-table rows; the end is
-inclusive. Rows map to `design_000`, `design_001`, etc. Keep `nevents` fixed for
-an initialized campaign: it determines the event bound and directory padding.
-A design bundle contains `parameters.dat`, `music_input`, and `initial.hdf`.
-The initializer refuses to overwrite the initial-condition file; inspect a
-partial bundle before retrying it.
-Generated profiles set `refuse_existing = true`: `events --submit` stops before
-doing anything if a selected design directory already exists. After checking
-for active writers and auditing an interrupted design, resume it with:
+`row_start`/`row_end` select zero-based design rows inclusively (`design_000`, etc.). Keep the initialized `nevents` and matching `parameters.dat`, `music_input`, `initial.hdf` bundle unchanged. To resume initialized designs, activate the profile and submit **directly from the login node, without an allocation or `srun`**. First confirm no queued/running workers or OSG transfers can write the selected designs, and audit their state:
 
 ```bash
-python models/campaign.py --config "$CFG" events --submit --allow-existing
+python models/campaign.py --config "$CFG" repair
+python models/campaign.py --config "$CFG" events --submit \
+  --allow-existing --no-initialize
 ```
 
-This keeps the existing bundle, its initial conditions and its event bound;
-nothing is overwritten. Use it only for the selected designs you intend to resume.
+`--allow-existing` permits the selected resume without replacing initialized inputs. `--no-initialize` prevents TRENTo from running for new designs; the command uses the existing bundles, applies the configured repair policy and submits batch jobs with `[submit]` resources. Creating new initial conditions still uses the compute-allocation procedure above.
 
 Repair and initialization can also run on their own, between passes:
 
@@ -104,10 +59,7 @@ python models/campaign.py --config "$CFG" repair --apply     # apply repairs, ne
 python models/campaign.py --config "$CFG" initialize --apply # initialize new designs only
 ```
 
-The audit writes per-design audit logs and `campaign_state.json` but changes no
-event. Applied repair clears dead locks and removes safely regenerable event
-directories; it does not ask Slurm whether a lock's owner is alive, so run it
-only with no queued or running workers for the selected designs.
+The audit writes per-design audit logs and `campaign_state.json` but changes no event. Applied repair clears dead locks and removes safely regenerable event directories; it does not ask Slurm whether a lock's owner is alive, so run it only with no queued or running workers for the selected designs.
 
 ### 2. Survey and select cache candidates
 
@@ -118,14 +70,7 @@ python models/campaign.py --config "$CFG" status --only review --details
 python models/campaign.py --config "$CFG" prepare-cache
 ```
 
-`status` reads raw metadata and cache/reap history and refreshes the configured
-survey JSON. `prepare-cache` runs `status` and writes `[pipeline] cache_manifest`;
-it performs no caching or deletion. Review that selection before executing it.
-Open `[pipeline] cache_manifest`; each non-comment row is `design_name system`,
-such as `design_000 AuAu200`. Generated personal profiles place it at
-`$HIC_CAMPAIGN_OUTPUT_ROOT/records/$(basename "$HIC_RAW_ROOT")/cache.manifest`.
-An empty manifest means no selected work; resolve the survey's reasons instead
-of forcing an incomplete design into the cache.
+`status` refreshes the raw/history survey JSON. `prepare-cache` also writes `[pipeline] cache_manifest`, without caching/deleting. Inspect that file: rows are `design_name system`, e.g. `design_000 AuAu200`. Generated profiles place it under `$HIC_CAMPAIGN_OUTPUT_ROOT/records/$(basename "$HIC_RAW_ROOT")/`. An empty manifest means no selected work; investigate survey reasons rather than forcing incomplete designs through.
 
 | Status | Meaning and next action |
 |---|---|
@@ -138,61 +83,28 @@ of forcing an incomplete design into the cache.
 | `reaped` | Successful reap evidence exists; continue to analysis. |
 | `review` | Conflicting metadata, scope mismatch, quarantine or ambiguous history needs inspection. |
 
-A terminal event has one nonempty particle-list variant and `afterburner.done`,
-or a clean `hydro.no_surface` marker. `.unfinished` is an accepted particle
-filename when its completion marker is present. No-surface events count toward
-the target. Missing particles alone do not prove that an event was reaped.
+A terminal event has one nonempty particle-list variant and `afterburner.done`, or a clean `hydro.no_surface` marker. `.unfinished` is an accepted particle filename when its completion marker is present. No-surface events count toward the target. Missing particles alone do not prove that an event was reaped.
 
-`raw_ready_for_cache` describes raw-input readiness, not permission to reap.
-`terminal_frac` is the terminal fraction of expected event slots;
-`scanned_expected` includes missing slots when a target is supplied.
-Status labels use historical records/markers, not fresh cache-payload verification.
+`raw_ready_for_cache` measures input readiness, not deletion permission. With an event target, `scanned_expected` counts all expected slots, including missing ones; `terminal_frac` is the fraction that are terminal. Status labels reflect historical markers/records rather than fresh cache-payload verification.
 
-The survey finds existing design directories and record-only designs. A design
-that has never been created and has no record is outside its scope; use the
-generation row selection to initialize it. `reaped.done` avoids an unnecessary
-per-event scan of an already reaped design.
+The survey includes existing and record-only designs, but not never-created designs without records. Generation row selection controls initialization; `reaped.done` skips unnecessary raw scans.
 
-`--details` shows reasons with a default limit of 20 rows; `--max-rows 0` shows
-all matching rows. `--only` and review's `--show` filter display only. They do
-not restrict the survey JSON, written manifest, or later execution.
+`--details` shows reasons with a default limit of 20 rows; `--max-rows 0` shows all matching rows. `--only` and review's `--show` filter display only. They do not restrict the survey JSON, written manifest, or later execution.
 
 ### 3. Cache and publish
 
-Leave at least 60 seconds with no output writers/transfers before starting a
-new cache build. The reaper audit's default timestamp margin requires raw
-particle files to predate the recorded cache start by 60 seconds. Queuing often
-provides that delay, but immediate interactive or tiny smoke runs may not.
+Stop writers/transfers and wait at least 60 seconds before a new cache build: the reaper audit requires particle mtimes to predate the recorded cache start by that margin.
 
 ```bash
 python models/campaign.py --config "$CFG" cache
 python models/campaign.py --config "$CFG" cache --submit
 ```
 
-The first command checks resolved inputs and writes `_submit_cache.sbatch` in
-the record directory. It creates the needed record/log directories but submits
-no job. `--submit` submits the cache array. Wait for completion before review.
-Neither command deletes raw events.
-Record the cache array job ID and use the same `squeue`/`sacct` checks as for
-generation. Its Slurm output is `cachereap_cache_<jobid>_<arrayindex>.out` under
-`[pipeline] slurm_log_root`. A successful submission is not a completed cache.
+Preview checks inputs, creates record/log directories and writes `_submit_cache.sbatch`; `--submit` launches its array. Record the job ID and wait before review, using the scheduler checks above. Cache logs are `cachereap_cache_<jobid>_<arrayindex>.out` under `[pipeline] slurm_log_root`. Neither command deletes raw events.
 
-For each design the wrapper builds or reuses a suitable cache, publishes and
-verifies it on CFS, then runs a reaper dry-run and writes a verdict. A published
-marker alone is not a clean wrapper verdict. A quarantined cache can remain
-available for diagnosis; inspect its record and logs before retrying.
+Each task builds/reuses a cache, publishes/verifies on CFS and records a reaper dry-run verdict. A publication marker alone is insufficient; inspect quarantined records/logs before retrying.
 
-Batch jobs pack up to `[cache] designs_per_task` designs on one node.
-`nprocs` is the process count per design, `cores` is the requested CPU count,
-and `throttle` limits concurrent array tasks. The rendered job freezes selected
-manifest rows, resolved paths, scope cuts and corruption limits. Later INI or
-manifest edits do not change that job; a changed fingerprint file is refused
-by its on-node preflight.
-`cores` is passed to Slurm's `--cpus-per-task`, so it counts logical CPUs.
-The number of simultaneous designs in one array task is
-`min(designs_per_task, cores // nprocs)`. Require `nprocs <= cores` and use one
-node per task. The job pins the submitting Python interpreter and explicit
-cache scope settings; submit from the intended activated environment.
+Each one-node array task runs up to `min(designs_per_task, cores // nprocs)` designs. `cores` counts logical CPUs, `nprocs <= cores`, and `throttle` limits concurrent tasks. The job freezes manifest rows, paths, scope and corruption limits; later INI/manifest edits do not affect it, and changed fingerprints fail preflight. It also pins the submitting Python, so submit from the intended environment.
 
 For interactive caching, use one existing CPU allocation:
 
@@ -201,12 +113,7 @@ python models/campaign.py --config "$CFG" cache --execution local
 python models/campaign.py --config "$CFG" cache --execution local --submit
 ```
 
-`[cache] jobs` or `--jobs` controls local design concurrency. Size the allocation
-for `jobs × nprocs`; this local pool stays on one node. Do not independently
-launch overlapping manifests against the same design/cache paths.
-Enter the compute shell in [the allocation example below](#allocations-and-optional-event-filling)
-before executing the local variant. Merely having `SLURM_JOB_ID` in a shell is
-not evidence that its Python process is running on a compute node.
+Local concurrency is `[cache] jobs`; reserve at least `jobs × nprocs` CPUs on one node. Enter the [compute shell below](#allocations-and-optional-event-filling) before executing: `SLURM_JOB_ID` alone does not place Python on a compute node. Do not overlap manifests on the same cache/design paths.
 
 ### 4. Review, then optionally reap
 
@@ -215,13 +122,7 @@ python models/campaign.py --config "$CFG" review --details
 python models/campaign.py --config "$CFG" review --json "$PROFILE/cache-review.json"
 ```
 
-Review reads records for the configured system and writes `[pipeline] reap_manifest`
-from clean, ready-to-reap records. Corrupt, duplicate or novel/anomalous records
-block manifest emission and produce a nonzero exit. Display filters do not
-narrow the written manifest. Review is not a new deep cache verification.
-Inspect the printed counts, reasons and reap-manifest path. A smoke run with
-one clean design and both particle events present should select that one design.
-The JSON filename is a review report, not the manifest consumed by `reap`.
+Review writes `[pipeline] reap_manifest` from clean ready-to-reap records. Corrupt, duplicate or anomalous history blocks emission and returns nonzero. Inspect counts, reasons and the manifest; filters affect display only. Review does not deeply reverify caches. `--json` writes a report, not the reap manifest.
 
 Inside the allocation's compute shell, with the same environment/profile loaded:
 
@@ -230,28 +131,15 @@ python models/campaign.py --config "$CFG" reap
 python models/campaign.py --config "$CFG" reap --submit
 ```
 
-The first command previews execution. The second runs local reapers, independently
-verifies the current cache and raw state, and deletes the particle lists of
-eligible events. When every cached event of a design is reaped cleanly, it also
-writes `reaped.done` and removes that design's event directories. Keep the reviewed
-manifest filename descriptive, such as `reap_ready.manifest`; the submitter
-requires a reap-named manifest by default. Do not bypass a refusal to substitute
-the general cache manifest.
+The first command previews; `--submit` executes. Applied reap independently verifies current cache/raw state, deletes eligible particle lists and, once the design is fully reaped, writes `reaped.done` and removes event directories. Use the reviewed reap-named manifest, such as `reap_ready.manifest`; never substitute the general cache manifest.
 
-Reaping requires a Slurm allocation and no queued/running event writers, OSG
-jobs or drain transfers for those designs. `[cache] jobs` controls local reap
-concurrency; it does not become a multi-node pool merely because more nodes
-are allocated. Preserve records and published caches. Reaping frees raw scratch;
-it does not clear CFS cache staging or surface archives.
+Reaping requires an allocation and no NERSC/OSG writers or drain transfers for those designs. `[cache] jobs` controls one-node concurrency. Preserve records/published caches; raw deletion does not free cache staging or archives.
 
-Reaping is optional. Analysis reads published caches and can run before or
-after raw reaping. Never reap a short design that you intend to fill later.
+Reaping is optional. Analysis reads published caches and can run before or after raw reaping. Never reap a short design that you intend to fill later.
 
 ### 5. Extract, aggregate and validate observables
 
-Run cache-reading analysis inside an allocation with access to the configured
-published caches, fingerprint and output directory. Enter the compute shell
-shown below first, then run:
+Run cache-reading analysis inside an allocation with access to the configured published caches, fingerprint and output directory. Enter the compute shell shown below first, then run:
 
 ```bash
 python models/campaign.py --config "$CFG" analysis audit
@@ -262,21 +150,11 @@ python models/campaign.py --config "$CFG" analysis aggregate
 python models/campaign.py --config "$CFG" validate
 ```
 
-Audit reports complete/missing/suspect artifacts against eligible published
-caches. Inspect its counts: missing artifacts alone do not make audit exit
-nonzero. Extraction skips complete, scope-matching artifacts unless `--force`
-is requested; failures are recorded in `analysis_failures.txt`.
+Audit reports complete/missing/suspect artifacts against eligible published caches. Inspect its counts: missing artifacts alone do not make audit exit nonzero. Extraction skips complete, scope-matching artifacts unless `--force` is requested; failures are recorded in `analysis_failures.txt`.
 
-Only `analysis run` is a preview until `--submit`. `aggregate` writes the model
-matrix immediately; `validate` immediately checks charged-cumulant consistency.
-Changing centrality bins or reduction settings requires a new aggregate and
-validation. Re-extract when the stored sufficient statistics or scope must change.
+`aggregate` writes immediately and `validate` checks immediately. For changed bins/statistics, follow [what to rerun](analysis.md#what-to-rerun-after-a-change).
 
-Outputs under `[pipeline] analysis_out_dir` include per-design
-`<design>_<system>_stageA.npz` / `.meta.json` and `model_matrix.npz` with its
-sidecars. Join downstream inputs by the stored `design_index`, which need not
-be contiguous. The [analysis-input reference](reference/analysis-inputs.md) documents the
-matrix, uncertainties and scientific choices for the separate inference workflow.
+The configured analysis directory receives per-design artifacts and `model_matrix.npz` plus sidecars. Join downstream inputs by `design_index`, which may have gaps; see [the input contract](reference/analysis-inputs.md).
 
 Additional analysis tools use the same INI:
 
@@ -287,50 +165,15 @@ python models/campaign.py --config "$CFG" analysis-design reduce --design design
 python models/campaign.py --config "$CFG" analysis feeddown
 ```
 
-`feeddown` immediately reads the published caches and writes the separate
-`feeddown_yields.npz`; it does not modify the model matrix. It shares estimator,
-bins and job count with analysis and takes PID/particle-combination settings
-from `[feeddown]`. Join by `design_index` and use the reference's inventory-acceptance
-and correlated-ratio uncertainty guidance.
-Here `design_000` is the first row used by setup; substitute an existing cached
-design in your own campaign. Per-design validation/reduction also needs its
-extracted stage-A artifact, so run extraction first.
+Select an existing cached design; per-design validation/reduction also requires its extracted artifact. `feeddown` immediately writes a separate PID-inventory product using `[feeddown]` plus the shared estimator/bins/jobs. It does not change the matrix. Follow [inventory acceptance and correlated-ratio guidance](reference/analysis-inputs.md#optional-feed-down-inventory).
 
 ## Configuration and selection
 
-| Section | Purpose |
-|---|---|
-| `[files]` | Base parameter template, design table, batch launcher and MUSIC input template |
-| `[run]` | Raw root, system, design prefix/rows, fixed event count and initialization |
-| `[submit]`, `[repair]` | Generation resources, retry/routing and repair/archive policy |
-| `[pipeline]` | Records, survey, manifests, staging/published caches, fingerprint, provenance tables and analysis output |
-| `[cache]` | Cache corruption policy, concurrency and array resources |
-| `[analysis_campaign]` | Cache-based observable extraction/reduction settings |
-| `[feeddown]` | Inventory-derived PID yields and their separate output |
+The [INI reference](reference/configuration.md) defines every section/key and CLI precedence. Relative paths resolve from the launch directory, not the INI's directory; use a consistent launch location.
 
-CLI values override INI values, then each tool's defaults apply. Paths expand
-`~` and environment variables and resolve relative to the launch directory.
-Keep the launch directory consistent when the INI contains relative values;
-an absolute INI filename does not change their base directory. Unresolved path
-variables are errors.
+Generation's row range does not restrict the survey, manifests or analysis. Those tools use their own root/prefix, manifests or selection flags. To select one extraction, use `analysis run --designs design_027 --submit`. To restrict cache or reap execution, supply a separately reviewed `--manifest /absolute/path/to/file`. For selection overrides, run `status` and `manifest` individually; `prepare-cache` takes its selection settings from the INI.
 
-Generation's row range does not restrict the survey, manifests or analysis.
-Those tools use their own root/prefix, manifests or selection flags. To select
-one extraction, use `analysis run --designs design_027 --submit`. To restrict cache
-or reap execution, supply a separately reviewed `--manifest /absolute/path/to/file`.
-For selection overrides, run `status` and `manifest` individually;
-`prepare-cache` takes its selection settings from the INI.
-
-Generated INIs permit up to 50 dropped bad events and 1000 malformed OSCAR rows
-during cache building. These are separate
-limits: dropped events are unsalvageable inputs excluded by the builder;
-malformed rows are skipped within its configured row allowance. They are
-frozen into each cache job. They do not authorize incomplete generation.
-A deficit fully explained by recorded dropped events follows that cache policy;
-a genuine short generation run requires explicit shortfall acceptance.
-
-For an intentionally short design, first survey, then make a separate candidate
-selection and inspect it:
+Generated INIs allow 50 dropped bad events and 1000 malformed rows; these are separate, frozen cache policies, not acceptance of unfinished generation. For a genuinely short design, create and review a separate selection:
 
 ```bash
 python models/campaign.py --config "$CFG" status
@@ -342,17 +185,9 @@ python models/campaign.py --config "$CFG" cache \
   --accept-shortfall --shortfall-reason 'Reviewed generation shortfall'
 ```
 
-The last command is still a preview. Add `--submit` only for the reviewed
-selection; do not put shortfall acceptance on a general campaign manifest.
-Changing a corruption limit or supplying a reason does not fix an invalid cache.
+The last command is still a preview. Add `--submit` only for the reviewed selection; do not put shortfall acceptance on a general campaign manifest. Changing a corruption limit or supplying a reason does not fix an invalid cache.
 
-The expected fingerprint determines the cache physics cuts; configured cache
-commands load those cuts and verify the generated fingerprint before work.
-When changing systems, update `[run] system`, the fingerprint, any nucleus-table
-paths, analysis bins/acceptances and every campaign root together. Changing
-`--system` alone does not select a complete new campaign. The personal setup
-helper starts with AuAu200; OO5360 also needs the nucleus table and matching
-profile described in [setup](../nersc/SETUP.md).
+When changing systems, coordinate the system key, fingerprint, nuclear inputs, analysis settings and storage roots using [the configuration reference](reference/configuration.md#changing-a-campaign). `--system` alone does not select a complete campaign.
 
 ## Allocations and optional event filling
 
@@ -365,103 +200,53 @@ profile described in [setup](../nersc/SETUP.md).
 | Cache with `--execution local`, reap, extraction and cache inventory/feeddown | CPU allocation, sized for configured concurrency |
 | Aggregate and matrix validation | Allocation with enough memory for the artifacts/matrix |
 
-Choose account, walltime and CPUs using NERSC's
-[interactive-job guidance](https://docs.nersc.gov/jobs/interactive/). For setup's
-small smoke configuration (`cache.jobs = 1`, `cache.nprocs = 2`, analysis jobs 1),
-start on the login node with your personal profile selected:
+Choose account, walltime and CPUs using NERSC's [interactive-job guidance](https://docs.nersc.gov/jobs/interactive/). For setup's small smoke configuration (`cache.jobs = 1`, `cache.nprocs = 2`, analysis jobs 1), start on the login node with your personal profile selected:
 
 ```bash
 export PROJECT=YOUR_ACCOUNT  # replace; same account as your personal launcher/INI
-salloc --nodes 1 --qos interactive --time 01:00:00 --constraint cpu --account "$PROJECT"
+salloc --nodes 1 --qos debug --time 00:30:00 --constraint cpu --account "$PROJECT"
 # After the allocation is granted, launch ONE shell on its compute node:
 srun --nodes=1 --ntasks=1 --cpus-per-task=2 --cpu-bind=cores --pty bash
 cd "$HOME/pce-eventgen"      # adjust to your checkout
 source "$PROFILE/activate.sh"
-export CFG="$HIC_CAMPAIGN_CONFIG"
-export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
 # Run local cache/reap or the analysis commands from the sections above here.
 exit  # leave the compute shell after the commands finish
-exit  # release the interactive allocation when finished
 ```
 
-`salloc` reserves resources; `srun` places the Python process on a compute node.
-Use `--ntasks=1` for a local Python pool to avoid launching duplicate campaigns.
-Increase the compute shell's `--cpus-per-task` for production: local cache
-concurrency needs at least `cache.jobs × cache.nprocs` logical CPUs; reap and
-analysis need capacity for their configured job count. The pools stay on one
-node. The shared cache submitter refuses local execution outside an allocation.
-Load any extra runtime modules your installation needs in this shell too.
-An allocation ending can interrupt unfinished work; preserve logs and inspect
-state before resuming.
+At the allocation shell's prompt, run `exit` again to release the allocation.
 
-For near-complete event designs, `fill-plan` writes plan rows to stdout and
-diagnostics to stderr:
+`salloc` reserves resources; `srun --ntasks=1` enters one compute process for a local pool. Production cache work needs at least `cache.jobs × cache.nprocs` CPUs; reap/analysis need their configured concurrency. Pools stay on one node. Load build-specific runtime modules and preserve logs if the allocation ends early.
+
+For near-complete event designs, `fill-plan` writes plan rows to stdout and diagnostics to stderr:
 
 ```bash
 python models/campaign.py --config "$CFG" fill-plan > "$PROFILE/fill.plan"
 cat "$PROFILE/fill.plan"
 ```
 
-The plan is selected from the whole configured raw root/prefix, independently
-of generation's row range. Inspect its `design ntasks mode restore short system`
-rows. By default it includes designs missing **1–499** events (`--max-short 500`
-is an exclusive bound), skips complete/reaped designs, and reports stuck events
-to stderr. A successful empty plan means no fill work; do not run `fill` on it.
-It is a current disk snapshot; regenerate after each wave and audit/repair stuck
-directories before expecting them to advance. Some archived tails need a later
-afterburner pass following the hydro/both pass.
+Inspect the six-field plan (`design ntasks mode restore short system`): it scans the whole raw root/prefix, independently of generation rows. Defaults select 1–499 missing events (`--max-short 500` is exclusive), skip complete/reaped designs and report stuck work to stderr. Do not execute an empty plan. Repair stuck events and regenerate plans after each wave; archived afterburner tails may require a second pass.
 
-`fill` launches its own `srun` steps. Run it from the allocation shell, before
-entering a CPU-consuming `srun --pty bash` step, so those steps can obtain CPUs.
-With no active writers for the selected designs, request an allocation and use
-the same profile/config:
+`fill` launches its own `srun` steps. Run it from the allocation shell, before entering a CPU-consuming `srun --pty bash` step, so those steps can obtain CPUs. With no active writers for the selected designs, request an allocation and use the same profile/config:
 
 ```bash
 salloc --nodes 1 --qos interactive --time 01:00:00 --constraint cpu --account "$PROJECT"
 cd "$HOME/pce-eventgen"  # adjust
 source "$PROFILE/activate.sh"
-export CFG="$HIC_CAMPAIGN_CONFIG"
 test -s "$PROFILE/fill.plan" && python models/campaign.py --config "$CFG" fill "$PROFILE/fill.plan"
 exit  # release this allocation after all fill steps finish
 ```
 
-Fill loads the profile's `HIC_PATHS_FILE` (set by `activate.sh`; fill refuses to
-start without it) and activates its `HIC_SOFTWARE_ROOT` Conda environment. The
-campaign config supplies the raw paths, event bound,
-CPUs/task, retry limit, logs and archive root.
+Fill requires `HIC_PATHS_FILE`, activates its software prefix and takes resource/path settings from the INI. It rejects plans whose system differs from the configuration.
 
-The plan includes the collision system and is rejected if it disagrees with
-the config. Each `srun` step stays on one node; steps queue within the allocation
-as CPUs become available. Failed steps give a nonzero exit and per-design logs.
-`[submit] cpus_per_task` supplies fill's default `CPT`; optionally export
-`CPT_AFTERBURNER=2` for serial afterburner tails, and size the allocation for the
-chosen packing. Set a fresh `[submit] event_log_root` for a fill wave if you need
-to preserve previous `dispatch_<design>.out` files; those dispatch logs are
-overwritten. Re-survey after the wave before caching.
+Steps remain on one node and queue for CPUs. Failures return nonzero with per-design logs. `[submit] cpus_per_task` supplies `CPT`; `CPT_AFTERBURNER=2` can reduce CPUs for serial tails. Use a fresh `event_log_root` to preserve prior `dispatch_<design>.out` files, which are overwritten. Survey again before caching.
 
 ## Logs, retries and direct tools
 
-Cache/reap records live in `[pipeline] record_dir`; per-design dispatch logs are
-`<design>_<system>_cache_dispatch.log` / `_reap_dispatch.log`, with additional
-step logs and `*_stage1.json` / `*_stage2.json` verdict records. Inspect the
-reported paths after a failure. A record is written at a terminal verdict;
-its absence does not prove the cache payload is absent.
+Inspect verdicts and dispatch logs under `[pipeline] record_dir`; [file names and layouts](reference/files.md#cache-products-and-records) are documented separately. Records appear at terminal verdicts, so a missing record does not imply a missing payload.
 
-A rerun can verify/reuse a published cache or reusable staging rather than
-rebuild from raw. CFS publication and staging can hold two copies; inspect
-space use before large runs. Scratch, CFS and the surface archive are separate
-storage budgets. Reaping raw does not free the latter two.
+Retries can reuse published or staged caches. Budget scratch, CFS staging/publication and archives separately; reaping frees raw scratch only.
 
-Preserve raw inputs when a wrapper quarantines. Check `status_reason`, the
-record's `quarantine_reason`, scope/provenance paths and backend logs. Review
-refuses incomplete/ambiguous history; do not ignore a nonzero exit to proceed
-to reap. An empty manifest is a successful no-work result.
-For timestamp quarantine, the quiet period must precede a **new** cache build.
-Waiting after an early cache was published does not change its recorded start
-time. A matching verified published cache is reused even if the wrapper receives
-`--force-rebuild`; do not retry that loop or change raw timestamps. Preserve the
-diagnostic products and follow the
-[timestamp troubleshooting procedure](troubleshooting.md).
+On quarantine, retain raw data and inspect `status_reason`, `quarantine_reason` and step logs. Resolve nonzero review exits before reap. For timestamp quarantine, waiting after publication does not change the cache start, and `--force-rebuild` does not replace a matching published cache; follow [timestamp recovery](troubleshooting.md#cache-publication-review-and-reaping).
 
 To inspect dispatch without invoking any backend, use:
 
@@ -469,7 +254,4 @@ To inspect dispatch without invoking any backend, use:
 python models/campaign.py --config "$CFG" --print-commands cache
 ```
 
-Native tools also accept the INI, for example
-`python models/submit_cache_reap_campaign.py --config "$CFG" --stage cache`.
-Calling `cache_reap_one_design.py cache` directly performs cache/publish work
-immediately; use the campaign preview for normal operation.
+Native tools also accept the INI, for example `python models/submit_cache_reap_campaign.py --config "$CFG" --stage cache`. Calling `cache_reap_one_design.py cache` directly performs cache/publish work immediately; use the campaign preview for normal operation.

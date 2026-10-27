@@ -1,20 +1,12 @@
 # A first small inference run
 
-This walkthrough follows the complete file flow: inputs → input checks →
-emulator closure → a short posterior run with automatic figures. It needs only
-the inference Python environment and this checkout. Allow a few minutes; plot
-generation can take longer than the tiny fit itself.
+Follow synthetic inputs → checks → emulator closure → a short posterior fit and figures. You need only the inference environment and checkout; allow a few minutes, including plotting.
 
-The model values generated here are **synthetic toy functions**, not TRENTo,
-MUSIC, iS3D or SMASH predictions. They are compared with the bundled real
-AuAu200 measurements only to exercise the interfaces. The resulting posterior,
-bands and closure scores have no physics interpretation.
+The model values are **synthetic toy functions**, compared with real AuAu200 measurements only to test interfaces. Posteriors and closure scores here have no physics interpretation.
 
 ## 1. Activate the environment
 
-Complete the [environment setup](README.md#environment-and-paths), and keep
-that Bash shell open in `inference/`. If you just opened a new shell, return
-to this folder, activate the environment and restore its settings:
+Complete the [environment setup](README.md#environment-and-paths), and keep that Bash shell open in `inference/`. If you just opened a new shell, return to this folder, activate the environment and restore its settings:
 
 ```bash
 source .venv/bin/activate
@@ -24,34 +16,23 @@ export MPLCONFIGDIR="$PWD/.matplotlib"
 python --version
 ```
 
-Expect Python 3.11. This environment runs independently of native simulator
-builds, campaign INI files and cluster login modules. Keep the same shell for
-the commands below: later steps use variables set in the next step.
+Expect Python 3.11. Keep this shell open: later steps use its variables. No simulation binaries or cluster modules are needed.
 
 ## 2. Create a small input set
 
-Create a fresh output directory inside `inference/` and generate the 16-design
-example:
+Create a fresh output directory inside `inference/` and generate the 16-design example:
 
 ```bash
-WALKTHROUGH=$(mktemp -d "$PWD/plots_student_walkthrough.XXXXXX")
+WALKTHROUGH=$(mktemp -d "$PWD/plots_walkthrough.XXXXXX")
 printf 'Walkthrough outputs: %s\n' "$WALKTHROUGH"
 python make_demo_inputs.py --out-dir "$WALKTHROUGH/inputs"
 TUTORIAL_MATRIX="$WALKTHROUGH/inputs/model_matrix_demo.npz"
 TUTORIAL_DESIGN="$WALKTHROUGH/inputs/design.dat"
 ```
 
-The generator writes a matrix NPZ, its same-stem `.meta.json`, and a design
-table with the standard 17 columns. Both the metadata and command output mark
-the matrix as synthetic. It uses the first 16 rows of the bundled design and
-stores zero-based row IDs; always pass the generated design alongside it.
-The existing measurement files are read from `inference/data/`.
+The generator writes a matrix NPZ, same-stem metadata and 17-column design from the first 16 bundled rows. Outputs are marked synthetic. Keep the generated design paired with its matrix; measurements come from `inference/data/`.
 
-The generator refuses to overwrite an existing directory. Repeating this block
-creates a fresh walkthrough, so earlier products are preserved. These
-`plots_student_walkthrough.*` directories are ignored by Git. Record the printed
-path if you close your shell; to resume, set `WALKTHROUGH` to that path and reset
-the two input-path variables above.
+Existing destinations are refused. Each block execution creates a new ignored `plots_walkthrough.*` directory. To resume later, restore the printed `WALKTHROUGH` path and both input variables instead of regenerating inputs.
 
 ## 3. Check inputs before training
 
@@ -60,13 +41,7 @@ python check_inputs.py --system AuAu200 \
   --matrix "$TUTORIAL_MATRIX" --design "$TUTORIAL_DESIGN"
 ```
 
-Expect `PASS`, a matrix shape of `(16, 1040)`, aligned inputs `(16, 14)`,
-70 matched observables, 16 usable designs and zero designs excluded by
-assembly. The 14 columns are the system's active emulator inputs, all sampled by
-default; the other three design columns are normalizations for other collision
-energies. The checker also lists the default AuAu200 exclusions (Lambda and
-proton yields, proton mean pT) and reports feed-down off, which is the primary
-analysis; the tutorial has no feed-down inventory.
+Expect `PASS`: matrix `(16, 1040)`, emulator inputs `(16, 14)`, 70 matched observables, 16 usable designs and none excluded by assembly. The other three design columns normalize other collision energies. The checker reports primary AuAu exclusions (Lambda/proton yields and proton mean pT), with feed-down off.
 
 ## 4. Check emulator closure
 
@@ -75,16 +50,9 @@ python inference.py --matrix "$TUTORIAL_MATRIX" --design "$TUTORIAL_DESIGN" \
   --emulator-only --nsplits 2 --out-dir "$WALKTHROUGH/closure"
 ```
 
-Closure holds out part of the design, trains on the rest, and compares emulator
-predictions with the held-out values. Here two folds keep the example small;
-production validation defaults to eight. The command then trains the full-grid
-emulator. It writes `auau_closure.pdf`, `auau_PC_spectrum.pdf` and
-`auau_run.json` in `closure/`, and does **not** sample a posterior. The toy grid
-has three retained principal components.
+Closure trains on part of the design and compares predictions with held-out rows. Two folds keep this example small; production uses eight. It then trains the full-grid emulator and writes `auau_closure.pdf`, `auau_PC_spectrum.pdf` and `auau_run.json`, without sampling. This toy grid retains three PCs.
 
-The following fit repeats closure/training; it does not load the emulator from
-this step. The stand-alone emulator-only command is useful for inspecting
-closure before committing to a long scientific run.
+The next command repeats closure/training; it does not load this emulator.
 
 ## 5. Run a short fit
 
@@ -95,19 +63,9 @@ python inference.py --matrix "$TUTORIAL_MATRIX" --design "$TUTORIAL_DESIGN" \
   --plot-npost 128 --plot-nprior 128 --corner-font-scale 1.4
 ```
 
-This trains the emulator and runs 32 walkers for 20 burn-in steps plus 40 saved
-steps. The saved sample table has **1,280 rows and 14 columns**. `--nsteps`
-counts steps per walker after burn-in; it is not the total number of samples.
-The fit automatically writes prior/posterior summaries and corner figures using the same emulator and samples. The last three options
-reduce the plotting ensembles and corner font size for this tutorial; normal
-defaults are 3,000 posterior draws (capped at the sample count), 5,000 prior
-draws and a 2.6 font multiplier. Plotting does not alter the fit. To skip all
-figures while keeping calibration, saved samples and diagnostics, use `--no-plots`.
+This runs 32 walkers for 20 burn-in plus 40 saved steps, producing **1,280 × 14** samples. `--nsteps` counts post-burn steps per walker. The last options reduce plotting work/font size; normal plot defaults are in the [reference](README.md#emulator-validation-inference-and-outputs). `--no-plots` skips figures while preserving the fit and diagnostics.
 
-Expect a **NOT converged** verdict. These settings test execution and are far
-too short for scientific inference; a zero command exit code means execution
-succeeded, not that the posterior converged. The toy model also cannot explain
-all the real data. Do not interpret edge-hugging samples as physics constraints.
+Expect **NOT converged**: these chains test execution only. A zero exit does not establish convergence, and boundary-hugging toy samples are not physics constraints.
 
 Inspect the saved arrays and verdict without knowing the internal code:
 
@@ -143,46 +101,20 @@ List the products from the fit:
 ls "$WALKTHROUGH/fit"
 ```
 
-The predictive renderer writes four PDFs: `auau_PosteriorSummary_yields.pdf`,
-`auau_PosteriorSummary_ptflow.pdf`, `auau_PriorSummary_yields.pdf` and
-`auau_PriorSummary_ptflow.pdf`. The point labels refer to the real measurements;
-the bands come from the tutorial's synthetic model. Charged flow is displayed
-as v_n{2}, while the fit itself uses signed cumulants. The bands show the spread
-of emulator means across parameter draws, without sampling emulator uncertainty.
+The predictive renderer writes four PDFs: `auau_PosteriorSummary_yields.pdf`, `auau_PosteriorSummary_ptflow.pdf`, `auau_PriorSummary_yields.pdf` and `auau_PriorSummary_ptflow.pdf`. The point labels refer to the real measurements; the bands come from the tutorial's synthetic model. Charged flow is displayed as v_n{2}, while the fit itself uses signed cumulants. The bands show the spread of emulator means across parameter draws, without sampling emulator uncertainty.
 
-The corner renderer uses the saved-run samples without training or sampling. It writes
-`auau_posterior_full.pdf` and group figures for geometry, equilibration, shear
-and bulk. Corner plots can take longer and use more memory than the fit. The
-individual group figures are often easier to read than the full 14-parameter
-triangle. Open the PDFs in a viewer; no plot window is expected in your terminal.
-Font-fallback or font-metadata timestamp warnings can be harmless if the figures
-are written successfully.
+Corners write `auau_posterior_full.pdf` plus geometry/equilibration/shear/bulk groups from the saved samples. Smaller groups are often clearer than the full triangle. Open the PDFs in a viewer; no plot window appears. Corners may take more time/memory than the fit; font warnings can be harmless when files are written.
 
-No second training or sampling step is needed for these automatic figures.
-To change figures later, use the [saved-result tools](README.md#default-figures-and-saved-result-tools):
-`make_flow_plots.py` then reconstructs inputs and retrains one emulator;
-`regen_corners.py` only reads the posterior NPZ.
+For later changes, use [saved-result plotting](README.md#default-figures-and-saved-result-tools): predictive regeneration retrains an emulator; corners read only the posterior.
 
 ## 7. Move to real campaign inputs
 
-Return to [staging real inputs](README.md#stage-the-selected-analysis-inputs).
-Replace **both** tutorial input paths with your campaign matrix and its original
-full design table, and keep the matching matrix metadata alongside the NPZ.
-Repeat input checks and real-design closure before sampling. Select your
-collision system, parameter treatment, feed-down policy and measurements
-deliberately; O-O has different profile/data requirements.
+Follow [real-input staging](README.md#stage-the-selected-analysis-inputs), replacing both toy paths with the campaign matrix/original full design table and retaining matching metadata. Repeat checks/closure and select the system, parameter and measurement/feed-down policy.
 
-A short chain on a 500-row matrix still trains on all 500 designs. Smaller
-`--nsteps` or `--nwalkers` does not reduce that cost. Use production sampling and
-validation settings from the [inference reference](README.md), and read the
-diagnostics before interpreting results. The full workflow does not automatically
-reuse the tutorial emulator or resume a partially completed MCMC chain.
+Short sampling still trains on every usable real design. Use adequate production validation/sampling and inspect convergence. The fitter neither reuses this tutorial emulator nor resumes interrupted MCMC.
 
-Use `python SCRIPT.py --help` or the [flag index](../docs/reference/cli-inference.md)
-for specific options. To repeat this exercise, create a fresh walkthrough
-directory. To keep working with an existing saved posterior, preserve its input
-files; predictive plotting needs them, while corner regeneration only needs the
-posterior NPZ.
+For your own inputs, continue with the [production workflow](PRODUCTION.md). It covers supplied matrix/design/measurement paths, preserved logs, convergence review and the standard plotting commands. Dataset-specific selections are described separately with the relevant measurements.
 
-Next, follow the [small robustness and leave-one-out scan walkthrough](SCANS.md)
-to test observable exclusions, injected-truth recovery and checked resume.
+Use `--help` or the [flag index](../docs/reference/cli-inference.md) for options. Preserve saved-run inputs for predictive regeneration; use fresh directories for repeat exercises.
+
+Next, follow the [small robustness and leave-one-out scan walkthrough](SCANS.md) to test observable exclusions, injected-truth recovery and checked resume.

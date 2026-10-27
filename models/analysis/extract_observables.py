@@ -37,9 +37,9 @@ Observable building blocks emitted (per hydro event; see reduce_observables.py f
                      identified species.
   dE_T/deta        : global-ET masks, midrapidity-integrated (optional/extra-to-spec).
 
-NOTE: this script was written against the v3 cache source but has NOT been executed against a
-real cache here. The one-design round-trip in reduce_observables.py --validate-against-cache is the
-acceptance gate before launching the array.
+The optional oo_cross_full_pt027_flat/v3 profile adds cross_full charged n=2,3 sufficient statistics and
+charged mean-pT moments for 0.27<pT<5 GeV, using flat dN/dpT inside the cached 0.25-0.30 bin.
+It preserves all original arrays; see docs/analysis.md for profile selection.
 """
 
 import argparse
@@ -56,8 +56,12 @@ import numpy as np
 # Schema contract -- MUST match cache_one_design/v3. Asserted structurally against shard 0.
 # ----------------------------------------------------------------------------------------
 EXPECTED_CACHE_SCHEMA = "cache_one_design/v3"
-# Stored schema and artifact names remain stable for existing campaigns.
-OBSERVABLE_SCHEMA = "stage_a/v1"
+# Version of the per-design observable statistics and their metadata.
+OBSERVABLE_SCHEMA = "observables/v1"
+OO_ANALYSIS_PROFILE = "oo_cross_full_pt027_flat/v3"
+OO_OBSOLETE_ANALYSIS_PROFILES = ("oo_cross_full_pt025_5/v1", "oo_cross_full_pt025_5/v2")
+OO_DEFAULT_CENTRALITY_EDGES = [0, 1, 2, 3, 4, 5] + list(range(10, 85, 5))
+OO_CROSS_HARMONICS = [2, 3]
 
 CORE_SPECIES = ["pi+", "pi-", "K+", "K-", "p", "pbar", "K0S",
                 "Lambda", "antiLambda", "Xi-", "antiXi+", "Omega-", "antiOmega+", "phi"]
@@ -312,8 +316,82 @@ def _assert_fingerprint_matches_constants(fp):
             raise SystemExit(f"fingerprint: {k} not hydro_event_aggregated_over_oversamples")
 
 
+def analysis_profile(meta):
+    profile = meta.get("analysis_profile", "baseline")
+    if profile in OO_OBSOLETE_ANALYSIS_PROFILES:
+        raise ValueError(f"Obsolete O-O profile {profile!r} uses a 0.25 GeV mean-pT cut; "
+                         f"this version requires {OO_ANALYSIS_PROFILE!r}. "
+                         "Re-extract into a new output directory or use --force; "
+                         "do not relabel old metadata.")
+    if profile not in ("baseline", OO_ANALYSIS_PROFILE):
+        raise ValueError(f"Unknown analysis profile {profile!r}; use matching analysis scripts")
+    return profile
+
+
+def assert_analysis_profile(meta, expected, context):
+    analysis_profile({"analysis_profile": expected})
+    if analysis_profile(meta) != expected:
+        raise ValueError(f"{context}: analysis profile differs from requested {expected}; "
+                         "use a new output directory or --force to re-extract")
+
+
+def add_analysis_profile_argument(parser):
+    parser.add_argument("--analysis-profile", default="baseline",
+                        choices=("baseline", OO_ANALYSIS_PROFILE),
+                        help="Observable definitions; OO v3 uses charged cross_full c2/c3 and "
+                             "interpolated 0.27-5 GeV charged mean pT.")
+
+
+def oo_observable_definitions():
+    return {
+        "charged_flow_by_harmonic": {"2": "cross_full_with_same_full_for_k1",
+                                     "3": "cross_full_with_same_full_for_k1", "4": "same_gap"},
+        "charged_cumulant_column_definitions": {
+            "c2_gap": "legacy label for signed c2_cross_full, with same_full fallback at k=1",
+            "c3_gap": "legacy label for signed c3_cross_full, with same_full fallback at k=1",
+            "c4_gap": "original same-oversample gap cumulant"},
+        "charged_mean_pt_range_GeV": [0.27, 5.0],
+        "charged_mean_pt_note": "0.27-5 GeV with flat dN/dpT assumed inside the cached 0.25-0.30 GeV bin",
+        "charged_mean_pt_interpolation": {
+            "method": "flat_dN_dpT", "boundary_bin_GeV": [0.25, 0.30],
+            "removed_count_fraction": 0.4, "removed_sum_pT_per_boundary_count_GeV": 0.104,
+            "applied_to": "per-hydro-event oversample-summed moments before reduction",
+            "shape_uncertainty_in_Y_err": False,
+        },
+        "charged_mean_pt_data_definition": "ATLAS measured fiducial mean, 0.27<pT<5 GeV; "
+                                           "use eta05 for |eta|<0.5, not the extrapolated pT>0 table",
+        "charged_multiplicity_pt_range": "all cached pT bins, unchanged",
+        "identified_observables": "unchanged; identified flow retains its original same-gap charged reference",
+        "cross_full_note": "Distinct oversamples of the same hydro event, full cached flow acceptance; "
+                           "a provisional proxy, not the exact experimental gap observable",
+        "single_sample_flow_policy": "For k=1 use same_full: (|Q_n|^2-M) / [M(M-1)] as "
+                                     "numerator/denominator contributions, not an eventwise ratio; "
+                                     "M<2 contributes zero pairs. Retain the event in every observable.",
+        "single_sample_flow_limitation": "Fallback retains same-sample nonflow; no equivalence to "
+                                         "cross_full is assumed. Counts and pair-weight fractions are recorded.",
+        "incompatible_previous_analysis_profiles": list(OO_OBSOLETE_ANALYSIS_PROFILES),
+    }
+
+
+def _charged_mean_pt_mask(fingerprint):
+    upper = np.asarray(fingerprint["scalar_pt_upper_edges"], dtype=float)
+    if (upper.ndim != 1 or not np.all(np.isfinite(upper)) or
+            not np.all(np.diff(upper) > 0)):
+        raise ValueError("Invalid scalar pT histogram edges")
+    for boundary in (0.25, 0.30, 5.0):
+        if not np.any(np.isclose(upper, boundary, rtol=0, atol=1e-9)):
+            raise ValueError(f"OO mean-pT cut {boundary} is not a cached bin edge")
+    lo, hi = np.r_[0., upper], np.r_[upper, np.inf]
+    boundary = np.flatnonzero(np.isclose(lo, 0.25, rtol=0, atol=1e-9)
+                              & np.isclose(hi, 0.30, rtol=0, atol=1e-9))
+    if boundary.size != 1:
+        raise ValueError("OO flat-bin interpolation requires one cached [0.25, 0.30) GeV bin")
+    return (lo >= 0.25 - 1e-9) & (hi <= 5.0 + 1e-9), int(boundary[0])
+
+
 def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zstd",
-                   expected_fingerprint=None):
+                   expected_fingerprint=None, profile="baseline"):
+    oo_observables = analysis_profile({"analysis_profile": profile}) == OO_ANALYSIS_PROFILE
     meta = json.loads(_read_text_maybe_zst(os.path.join(cache_dir, "metadata.json"), zstd=zstd))
     fingerprint = meta.get("fingerprint")
     if expected_fingerprint is not None:
@@ -331,6 +409,12 @@ def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zs
         _assert_fingerprint_matches_constants(fingerprint)
     elif require_verified:
         raise SystemExit("metadata.json has no fingerprint; cannot verify cache semantics")
+
+    pt_mask, pt_cut_bin = None, None
+    if oo_observables:
+        if os.path.basename(os.path.normpath(cache_dir)) != "OO5360":
+            raise ValueError(f"{OO_ANALYSIS_PROFILE} requires an OO5360 cache directory")
+        pt_mask, pt_cut_bin = _charged_mean_pt_mask(fingerprint)
 
     marker = None
     marker_path = os.path.join(cache_dir, "cache.verified")
@@ -392,6 +476,14 @@ def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zs
         "et_central": np.zeros((n_events_meta, n_et_m, n_et_f), dtype=np.float64),
     }
 
+    if oo_observables:
+        out["charged_mean_pT_N"] = np.zeros_like(out["charged_N"])
+        out["charged_mean_pT_sum_pT"] = np.zeros_like(out["charged_sum_pT"])
+        # Store cross-pair totals/(k-1). The existing reducer's 1/k weight then
+        # gives the required per-hydro-event normalization 1/[k(k-1)].
+        out["charged_cross_full_num"] = np.zeros((n_events_meta, 2))
+        out["charged_cross_full_den"] = np.zeros((n_events_meta, 2))
+
     row = 0
     for shard_idx, base in enumerate(shard_names):
         shard_path, is_zst = _resolve_shard_path(cache_dir, base)
@@ -400,7 +492,6 @@ def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zs
             if shard_idx == 0:
                 _assert_schema(z, marker, fingerprint)
             _assert_shard_consistency(z, base)
-
             ev = z["event_ids"]
             offs = z["offsets"]
             ne = len(ev)
@@ -452,9 +543,38 @@ def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zs
                     out["charged_N"][r, wi] = float(pth[(hk, "N")][i].sum())
                     out["charged_sum_pT"][r, wi] = float(pth[(hk, "sum_pT")][i].sum())
                     out["charged_sum_pT2"][r, wi] = float(pth[(hk, "sum_pT2")][i].sum())
+                    if oo_observables:
+                        # Remove [0.25, 0.27) under flat dN/dpT: 0.4 of the bin,
+                        # with removed particles' mean pT 0.26 GeV. Multiplicity
+                        # above keeps the original all-pT moments.
+                        n_boundary = float(pth[(hk, "N")][i, pt_cut_bin])
+                        out["charged_mean_pT_N"][r, wi] = float(
+                            pth[(hk, "N")][i, pt_mask].sum()) - 0.4 * n_boundary
+                        out["charged_mean_pT_sum_pT"][r, wi] = float(
+                            pth[(hk, "sum_pT")][i, pt_mask].sum()) - 0.104 * n_boundary
 
                 if k == 0:
                     continue   # all per-oversample contributions are zero for zero-events
+
+                if oo_observables:
+                    charged_idx = FLOW_SPECIES.index("charged")
+                    cm = fl[(charged_idx, "m_full")][a:b].astype(np.float64)
+                    if k == 1:
+                        # Only one particlization sample: use its ordinary two-particle
+                        # correlator with self-pairs removed. Keep event and centrality.
+                        cross_den = float(cm[0] * (cm[0] - 1.0)) if cm[0] >= 2 else 0.0
+                    else:
+                        cross_den = (cm.sum()**2 - np.dot(cm, cm)) / (k - 1)
+                    if cross_den < 0:
+                        raise ValueError(f"{base}: negative cross_full pair denominator")
+                    for chi, harmonic in enumerate(OO_CROSS_HARMONICS):
+                        cq = fl[(charged_idx, f"q{harmonic}_full")][a:b]
+                        if k == 1:
+                            num = float(abs(cq[0])**2 - cm[0]) if cm[0] >= 2 else 0.0
+                        else:
+                            num = float((abs(cq.sum())**2 - np.vdot(cq, cq).real) / (k - 1))
+                        out["charged_cross_full_num"][r, chi] = num
+                        out["charged_cross_full_den"][r, chi] = cross_den
 
                 # scalar moments (CORE_SPECIES): oversample-sum (cross-check for yields/<pT>)
                 for si in range(n_sc):
@@ -525,6 +645,32 @@ def extract_design(cache_dir, et_eta_window=0.5, require_verified=True, zstd="zs
             raise SystemExit(f"non-finite {key} produced")
 
     artifact_meta = _build_artifact_meta(cache_dir, meta, marker, et_eta_window, out)
+    artifact_meta["analysis_profile"] = profile
+    if oo_observables:
+        for key in ("charged_cross_full_num", "charged_cross_full_den",
+                    "charged_mean_pT_N", "charged_mean_pT_sum_pT"):
+            if not np.all(np.isfinite(out[key])):
+                raise ValueError(f"Nonfinite {key} produced")
+        artifact_meta.update(oo_observable_definitions())
+        artifact_meta["analysis_profile"] = OO_ANALYSIS_PROFILE
+        artifact_meta["charged_cross_full_harmonics"] = OO_CROSS_HARMONICS
+        artifact_meta["charged_cross_full_storage"] = (
+            "k>=2: distinct-sample pair totals/(k-1); k=1: same_full pair totals; "
+            "divide by nsub_used downstream for equal-event weighting")
+        one = out["nsub_used"] == 1
+        artifact_meta["charged_flow_sample_counts"] = {
+            "cross_full_events": int(np.count_nonzero(out["nsub_used"] >= 2)),
+            "same_full_fallback_events": int(np.count_nonzero(one)),
+            "fallback_event_ids_first20": out["event_id"][one][:20].tolist(),
+        }
+        artifact_meta["charged_flow_estimator"] = (
+            "cross_full for n=2,3 with same_full at k=1; original same_gap for n=4")
+        artifact_meta["systematic_limitations"].extend([
+            "Charged c2_gap/c3_gap are compatibility labels for cross_full in this analysis profile.",
+            "Charged mean pT targets 0.27<pT<5 GeV using flat dN/dpT inside the cached "
+            "0.25-0.30 GeV bin; interpolation uncertainty is not included in statistical errors.",
+            "Single-sample events use same_full flow, which can retain same-sample nonflow.",
+        ])
     return out, artifact_meta
 
 
@@ -533,7 +679,7 @@ def _build_artifact_meta(cache_dir, cache_meta, marker, et_eta_window, out):
     fp = cache_meta.get("fingerprint") or {}
     return {
         "system": (marker or {}).get("system") or os.path.basename(os.path.normpath(cache_dir)),
-        "stage_a_schema_version": OBSERVABLE_SCHEMA,
+        "observable_schema_version": OBSERVABLE_SCHEMA,
         "cache_schema_version": EXPECTED_CACHE_SCHEMA,
         "cache_fingerprint_hash": (cache_meta.get("fingerprint_hash")
                                    or (_canonical_fingerprint_hash(cache_meta["fingerprint"])
@@ -616,12 +762,13 @@ def main():
                     help="e.g. AuAu200 or OO5360 (with --cache-root).")
     ap.add_argument("--out-dir", required=True, help="Output directory for the artifact.")
     ap.add_argument("--out-prefix", default=None,
-                    help="Override output basename (default <design>_<system>_stageA).")
+                    help="Override output basename (default <design>_<system>_observables).")
     ap.add_argument("--et-eta-window", type=float, default=0.5,
                     help="Half-width for midrapidity global-ET integration (default 0.5).")
     ap.add_argument("--allow-unverified", action="store_true",
                     help="Permit a cache without cache.verified (local pre-publish only).")
     ap.add_argument("--zstd", default="zstd", help="zstd binary (default 'zstd').")
+    add_analysis_profile_argument(ap)
     ap.add_argument("--expected-fingerprint", default=os.environ.get("HIC_EXPECTED_FINGERPRINT_V3"),
                     help="Selected scope; defaults to HIC_EXPECTED_FINGERPRINT_V3.")
     args = ap.parse_args()
@@ -637,13 +784,13 @@ def main():
         cache_dir = os.path.join(args.cache_root, args.design, args.system)
         design, system = args.design, args.system
 
-    prefix = args.out_prefix or f"{design}_{system}_stageA"
+    prefix = args.out_prefix or f"{design}_{system}_observables"
     out_prefix = os.path.join(args.out_dir, prefix)
 
     t0 = time.time()
     out, meta = extract_design(cache_dir, et_eta_window=args.et_eta_window,
                                require_verified=not args.allow_unverified, zstd=args.zstd,
-                               expected_fingerprint=expected)
+                               expected_fingerprint=expected, profile=args.analysis_profile)
     write_artifact(out, meta, out_prefix)
     print(f"[analysis] {design}/{system}: {meta['n_events']} events "
           f"({meta['n_zero_events']} zero), nsub[min/med/max]="

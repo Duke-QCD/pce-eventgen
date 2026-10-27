@@ -58,28 +58,109 @@ for model in "${models[@]}"; do
   fi
 done
 
+# Keep incremental builds only while their source, environment and toolchain agree.
+# This lives in the installer so copying local/install also copies the cache fix.
+configure_model() {
+  local source="$1" build="$2"
+  shift 2
+  python - "$source" "$build" "$prefix" "$@" <<'PY'
+import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import sys
+
+source, build, prefix = (Path(value).resolve() for value in sys.argv[1:4])
+if build == source or build in source.parents:
+    sys.exit('Build directory must be separate from the source root and its ancestors: ' + str(build))
+keys = ('CC', 'CXX', 'FC', 'CFLAGS', 'CXXFLAGS', 'CPPFLAGS', 'LDFLAGS',
+        'CMAKE_PREFIX_PATH', 'CMAKE_INCLUDE_PATH', 'CMAKE_LIBRARY_PATH',
+        'CMAKE_GENERATOR', 'CMAKE_TOOLCHAIN_FILE',
+        'HDF5_ROOT', 'GSL_ROOT_DIR', 'GSL_ROOT', 'GSL_HOME', 'LIB_DIR', 'BOOST_ROOT', 'Boost_ROOT',
+        'Eigen3_ROOT', 'Eigen3_DIR', 'PYTHIA8', 'PYTHIA_ROOT_DIR',
+        'PKG_CONFIG_PATH', 'CPATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH',
+        'LD_LIBRARY_PATH', 'LOADEDMODULES', 'PE_ENV', 'CRAYPE_VERSION',
+        'CRAYPE_LINK_TYPE', 'CRAY_CPU_TARGET')
+tools = {}
+for name, command in (('CC', os.environ.get('CC', 'cc')),
+                      ('CXX', os.environ.get('CXX', 'c++')), ('cmake', 'cmake')):
+    parts = shlex.split(command)
+    executable = shutil.which(parts[0]) if parts else None
+    if executable:
+        path = Path(executable).resolve()
+        tools[name] = [str(path), path.stat().st_mtime_ns]
+context = {'source': str(source), 'prefix': str(prefix), 'options': sys.argv[4:],
+           'environment': {key: os.environ.get(key) for key in keys}, 'tools': tools}
+state = build / '.pce-install-context.json'
+try:
+    previous = json.loads(state.read_text())
+except (OSError, ValueError):
+    previous = None
+if previous != context:
+    if (build / 'CMakeCache.txt').exists() or (build / 'CMakeFiles').exists():
+        print('Refreshing CMake state for changed source/environment/toolchain: ' + str(build), flush=True)
+    # Remove generated configuration/objects only, never source or installed data.
+    (build / 'CMakeCache.txt').unlink(missing_ok=True)
+    generated = build / 'CMakeFiles'
+    if generated.is_symlink():
+        generated.unlink()
+    elif generated.is_dir():
+        shutil.rmtree(generated)
+build.mkdir(parents=True, exist_ok=True)
+state.write_text(json.dumps(context, indent=2) + '\n')
+PY
+  # find_package/find_library cache results survive normal reconfiguration.
+  # Rediscover them before applying the current explicit configuration options.
+  cmake -S "$source" -B "$build" \
+    -U 'HDF5_*' -U H5CXX -U ZLIB \
+    -U 'GSL_*' -U 'Boost_*' -U '_Boost_*' -U 'boost_*' \
+    -U 'OpenMP_*' -U 'Pythia_*' -U 'PYTHIA_*' -U 'EIGEN3_*' -U Eigen3_DIR \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" "$@"
+}
+
+# Compiler wrappers can mark dependency directories as implicit, which CMake
+# then omits from automatic install RPATHs. Retain the actual selected paths.
+retain_library_paths() {
+  python - "$@" <<'PY'
+from pathlib import Path
+import subprocess
+import sys
+
+source, build = sys.argv[1:3]
+cache = {}
+for line in (Path(build) / 'CMakeCache.txt').read_text().splitlines():
+    key, separator, value = line.partition('=')
+    if separator and ':' in key:
+        cache[key.split(':', 1)[0]] = value
+original = cache.get('CMAKE_INSTALL_RPATH', '').split(';')
+paths = [path for path in original if path]
+for name in sys.argv[3:]:
+    library = cache.get(name, '')
+    if library and not library.endswith('-NOTFOUND') and Path(library).is_absolute():
+        directory = str(Path(library).parent)
+        if directory not in paths:
+            paths.append(directory)
+if paths != original:
+    subprocess.run(['cmake', '-S', source, '-B', build,
+                    '-DCMAKE_INSTALL_RPATH=' + ';'.join(paths)], check=True)
+PY
+}
+
 # build each model
 for model in "${models[@]}"; do
-  i="models/$model/"
   if [[ "$model" == music-hydro ]]; then
     music_build="${HIC_MUSIC_BUILD_DIR:-$repo_root/models/music-hydro/build-workflow}"
-    music_data_args=()
-    if [[ -n "${HIC_EOS_PCE_DIR:-}" ]]; then
-      music_data_args+=("-DMUSIC_PCE_TABLE_DIR=$HIC_EOS_PCE_DIR")
-    fi
-    if [[ -n "${HIC_MUSIC_INSTALL_PCE_DATA:-}" ]]; then
-      music_data_args+=("-DMUSIC_INSTALL_PCE_DATA=$HIC_MUSIC_INSTALL_PCE_DATA")
-    fi
-    cmake -S "$repo_root/models/music-hydro" -B "$music_build" \
-      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix" "${music_data_args[@]}"
+    configure_model "$repo_root/models/music-hydro" "$music_build" \
+      "-DMUSIC_PCE_TABLE_DIR=${HIC_EOS_PCE_DIR:-$repo_root/models/music-hydro/EOS/PCE/strange_30_10000}" \
+      "-DMUSIC_INSTALL_PCE_DATA=${HIC_MUSIC_INSTALL_PCE_DATA:-ON}"
     cmake --build "$music_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
     cmake --install "$music_build"
     continue
   fi
   if [[ "$model" == iS3D ]]; then
     is3d_build="${HIC_IS3D_BUILD_DIR:-$repo_root/models/iS3D/build-workflow}"
-    cmake -S "$repo_root/models/iS3D" -B "$is3d_build" \
-      -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix"
+    configure_model "$repo_root/models/iS3D" "$is3d_build" -DIS3D_INSTALL_DATA=ON
     cmake --build "$is3d_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
     cmake --install "$is3d_build"
     continue
@@ -114,72 +195,59 @@ if not sigma_defined and sigma_used:
 PY
     fi
     smash_dependency_args=()
-    if [[ -x "$repo_root/models/SMASH/build-deps/pythia8309/bin/pythia8-config" ]]; then
+    explicit_pythia=false
+    for option in "${smash_cmake_args[@]}"; do
+      case "$option" in
+        -DPythia_CONFIG_EXECUTABLE=*|-DPythia_CONFIG_EXECUTABLE:*|-DPYTHIA_ROOT_DIR=*|-DPYTHIA_ROOT_DIR:*)
+          explicit_pythia=true ;;
+      esac
+    done
+    if $explicit_pythia; then
+      : # Explicit CMake selections take precedence over environment/bundled copies.
+    elif [[ -n "${PYTHIA_CONFIG:-}" ]]; then
+      smash_dependency_args+=("-DPythia_CONFIG_EXECUTABLE=$PYTHIA_CONFIG")
+    elif [[ -n "${PYTHIA_ROOT_DIR:-${PYTHIA8:-}}" ]]; then
+      smash_dependency_args+=("-DPYTHIA_ROOT_DIR=${PYTHIA_ROOT_DIR:-$PYTHIA8}")
+    elif [[ -x "$repo_root/models/SMASH/build-deps/pythia8309/bin/pythia8-config" ]]; then
       smash_dependency_args+=("-DPythia_CONFIG_EXECUTABLE=$repo_root/models/SMASH/build-deps/pythia8309/bin/pythia8-config")
     fi
-    cmake -S "$repo_root/models/SMASH" -B "$smash_build" \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="$prefix" \
+    # New GCC headers no longer supply <cstdint> indirectly. Keep pinned SMASH
+    # unchanged and pre-include it for C++ only, preserving environment CXXFLAGS.
+    configure_model "$repo_root/models/SMASH" "$smash_build" \
+      '-DCMAKE_CXX_FLAGS_INIT=-include cstdint' \
       -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
       '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib' \
       -DBUILD_TESTING=OFF \
       -DTRY_USE_ROOT=OFF -DTRY_USE_HEPMC=OFF -DTRY_USE_RIVET=OFF \
       "${smash_dependency_args[@]}" \
       "${smash_cmake_args[@]}"
-    # CMake omits dependency directories inside the source tree from its
-    # automatic install RPATH. Include the resolved Pythia directory explicitly
-    # so build-deps/ works after installation as well as in the build tree.
-    python - "$repo_root/models/SMASH" "$smash_build" <<'PY'
-from pathlib import Path
-import subprocess
-import sys
-source, build = sys.argv[1:]
-cache = {}
-for line in (Path(build) / 'CMakeCache.txt').read_text().splitlines():
-    key, separator, value = line.partition('=')
-    if separator and ':' in key:
-        cache[key.split(':', 1)[0]] = value
-library = cache.get('Pythia_LIBRARY', '')
-if library and not library.endswith('-NOTFOUND'):
-    directory = str(Path(library).parent)
-    paths = cache.get('CMAKE_INSTALL_RPATH', '').split(';')
-    if directory not in paths:
-        paths.append(directory)
-        subprocess.run(['cmake', '-S', source, '-B', build,
-                        '-DCMAKE_INSTALL_RPATH=' + ';'.join(paths)], check=True)
-PY
+    # Keep bundled build-deps/ usable after installing outside the source tree.
+    retain_library_paths "$repo_root/models/SMASH" "$smash_build" Pythia_LIBRARY
     cmake --build "$smash_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
     "$smash_build/smash" --version
     cmake --install "$smash_build"
     "$prefix/bin/smash" --version
     continue
   fi
-  pushd "$i"
-
-  # Build the remaining CMake model (TRENTO).
-  if [[ -f CMakeLists.txt ]]; then
-    # create build directory and run cmake if necessary
-    if [[ -d build ]]; then
-      cd build
-    else
-      mkdir build && cd build
-      # subshell allows temporary environment modification
-      (
-        exec cmake \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=/ \
-          ..
-      ) || exit 1
-    fi
-
-    # compile and install
-    make --jobs="${HIC_BUILD_JOBS:-$(nproc)}" DESTDIR="$prefix" install || exit 1
-  else
-    echo "unknown build system for model $i"
-    exit 1
+  # TRENTo: avoid legacy build/ caches and refresh HDF5 discovery on each run.
+  trento_build="${HIC_TRENTO_BUILD_DIR:-$repo_root/models/trento/build-workflow}"
+  trento_hdf5_args=()
+  if [[ -n "${HDF5_ROOT:-}" ]]; then
+    trento_hdf5_args+=("-DHDF5_ROOT=$HDF5_ROOT")
   fi
-
-  popd
+  if [[ "$OSTYPE" == linux* ]]; then
+    # HDF5 C++ also loads HDF5 C. ELF RUNPATH covers direct dependencies only;
+    # use RPATH so the selected directory also resolves that dependency chain.
+    trento_hdf5_args+=('-DCMAKE_EXE_LINKER_FLAGS_INIT=-Wl,--disable-new-dtags')
+  fi
+  configure_model "$repo_root/models/trento" "$trento_build" \
+    -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON \
+    '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib' \
+    "${trento_hdf5_args[@]}"
+  retain_library_paths "$repo_root/models/trento" "$trento_build" HDF5_CXX_LIB HDF5_C_LIB ZLIB
+  cmake --build "$trento_build" --parallel "${HIC_BUILD_JOBS:-$(nproc)}"
+  cmake --install "$trento_build"
+  "$prefix/bin/trento" --version
 done
 
 # install the event runner script and wrapper

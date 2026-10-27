@@ -43,6 +43,8 @@ def render(project, software, data, output, raw, profile, design, nevents, runti
     """Render every file before writing anything; no NERSC access is required."""
     campaign = raw.name
     slurm_logs = raw / '_logs/slurm'
+    # The documented two-event profile is the isolated setup smoke test.
+    smoke = nevents == 2
     values = {
         'ACCOUNT': project, 'CODE_HOME': ROOT, 'SOFTWARE_ROOT': software, 'DATA_ROOT': data,
         'RUNTIME_GCC_MODULE': runtime_gcc_module, 'RAW_ROOT': raw, 'OUTPUT_ROOT': output,
@@ -54,6 +56,13 @@ def render(project, software, data, output, raw, profile, design, nevents, runti
         'NEVENTS': nevents, 'PATHS_FILE': profile / 'nersc_paths.sh',
         'CONFIG': profile / 'calibration.ini', 'LAUNCHER': profile / 'pce-eventgen',
         'SLURM_OUTPUT': slurm_logs / '%x-%j.out', 'SLURM_ERROR': slurm_logs / '%x-%j.err',
+        'QOS': 'debug' if smoke else 'regular',
+        'SUBMIT_TIME': '00:30:00' if smoke else '00:10:00',
+        'CACHE_TIME': '00:30:00' if smoke else '04:00:00',
+        'SUBMIT_TASKS': 2 if smoke else 16,
+        'SUBMIT_CPUS': 32 if smoke else 16,
+        'LAUNCHER_TASKS': 2 if smoke else 1,
+        'LAUNCHER_CPUS': 32 if smoke else 1,
     }
     return {
         'nersc_paths.sh': fill('nersc_paths.sh', values, quote=True),
@@ -82,7 +91,8 @@ def main():
     parser.add_argument('--design-file', default=str(ROOT / 'config/initialization/design_params_combined500.dat'),
                         help='Design table; defaults to the campaign\'s 500-row table.')
     parser.add_argument('--nevents', type=int, default=10000,
-                        help='Fixed event bound; use 2 only for a separate setup-smoke campaign.')
+                        help='Fixed event bound; 2 selects setup-smoke defaults '
+                             '(debug QOS, 00:30:00 for generation/cache).')
     args = parser.parse_args()
     try:
         if not re.fullmatch(r'[A-Za-z0-9_.-]+', args.project) or args.nevents <= 0:
@@ -118,6 +128,9 @@ def main():
             path.write_text(text)
             if name == 'pce-eventgen':
                 path.chmod(0o750)
+    except FileExistsError:
+        parser.error(f'Profile already exists: {profile}. No files were changed. '
+                     'Reuse its activate.sh if its settings are correct, or choose a new --out-dir.')
     except (OSError, ValueError) as error:
         parser.error(str(error))
     print(f'Personal configuration: {profile}')

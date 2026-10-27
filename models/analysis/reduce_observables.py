@@ -132,7 +132,7 @@ def _strict_root(c):
 # ratio / v_n observables (the equivalent of se_pair), which for a plain mean coincides with the
 # standard error of the mean (se_1d 'sem'). All are O(events): leave-one-out sums are total minus
 # one element, so the whole thing is vectorized, no resampling loop.
-def _jack_ratio_se(num_i, den_i, root=False):
+def _jack_ratio_se(num_i, den_i, root=False, strict=False):
     """Delete-one jackknife SE of R = sum(num_i)/sum(den_i), or of sqrt(R) when root=True.
     num_i/den_i are the per-event weighted contributions (the same ones summed for the point)."""
     num_i = np.asarray(num_i, float); den_i = np.asarray(den_i, float)
@@ -144,6 +144,8 @@ def _jack_ratio_se(num_i, den_i, root=False):
     with np.errstate(divide="ignore", invalid="ignore"):
         Rj = np.where(Bj > 0, (A - num_i) / Bj, np.nan)
         tj = np.sqrt(np.where(Rj > 0, Rj, np.nan)) if root else Rj
+    if strict and not np.all(np.isfinite(tj)):
+        return np.nan
     tj = tj[np.isfinite(tj)]
     m = tj.size
     if m < 2:
@@ -236,6 +238,7 @@ def reduce_class(out, meta, idx, *, weighting="equal_event", y_window=0.5, charg
     species_sc = meta["species_scalar"]
     harmonics = meta["harmonics"]
     ch_idx = species_fl.index("charged")
+    oo_adjusted = sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE
 
     nsub = out["nsub_used"][idx].astype(float)
     w = _weights(nsub, weighting)
@@ -272,14 +275,30 @@ def reduce_class(out, meta, idx, *, weighting="equal_event", y_window=0.5, charg
     else:
         dnch_deta = _ratio(float(cN.sum()), float(nsub.sum())) / deta
         se_nch = _jack_ratio_se(cN, nsub) / deta
-    cpt_num, cpt_den = w * cpt, w * cN
+    # Only charged mean pT uses the accepted moments; multiplicity above and
+    # the charged reference for identified flow retain their original arrays.
+    cpt_N = out["charged_mean_pT_N"][idx, cw_i] if oo_adjusted else cN
+    if oo_adjusted:
+        cpt = out["charged_mean_pT_sum_pT"][idx, cw_i]
+    cpt_num, cpt_den = w * cpt, w * cpt_N
     charged = {"dNch_deta": (dnch_deta, se_nch),
                "mean_pT": (_ratio(float(cpt_num.sum()), float(cpt_den.sum())),
-                           _jack_ratio_se(cpt_num, cpt_den))}
+                           _jack_ratio_se(cpt_num, cpt_den, strict=oo_adjusted))}
     for hi, n in enumerate(harmonics):
         wn_i, wd_i = w * cref_num_h[hi], w * cref_den_h[hi]
-        charged[f"v{n}_2"] = (_strict_root(c_ref[n]), _jack_ratio_se(wn_i, wd_i, root=True))
-        charged[f"c{n}_gap"] = (c_ref[n], _jack_ratio_se(wn_i, wd_i, root=False))
+        value, strict = c_ref[n], False
+        if oo_adjusted and n in sx.OO_CROSS_HARMONICS:
+            chi = meta["charged_cross_full_harmonics"].index(n)
+            wn_i = w * out["charged_cross_full_num"][idx, chi]
+            wd_i = w * out["charged_cross_full_den"][idx, chi]
+            value = _ratio(float(wn_i.sum()), float(wd_i.sum()))
+            strict = True
+        charged[f"v{n}_2"] = (_strict_root(value), _jack_ratio_se(wn_i, wd_i, root=True, strict=strict))
+        # Keep the legacy inference column names and order. In the OO profile
+        # c2_gap/c3_gap explicitly alias cross_full; metadata records this.
+        charged[f"c{n}_gap"] = (value, _jack_ratio_se(wn_i, wd_i, strict=strict))
+        if strict:
+            charged[f"c{n}_cross_full"] = charged[f"c{n}_gap"]
     res["charged"] = charged
 
     # ---- identified (individual cache species) ----
@@ -358,6 +377,10 @@ def bootstrap_class(out, meta, idx, *, n_boot=200, seed=12345, **kw):
     for (g, k) in flat_keys:
         arr = np.asarray(samples[(g, k)], dtype=float)
         sigma = float(np.nanstd(arr, ddof=1)) if np.sum(np.isfinite(arr)) > 1 else np.nan
+        if (sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE and g == "charged"
+                and k in ("mean_pT", "c2_gap", "c3_gap", "c2_cross_full", "c3_cross_full", "v2_2", "v3_2")
+                and not np.all(np.isfinite(arr))):
+            sigma = np.nan  # Do not hide invalid replicates for the adjusted observables.
         res.setdefault(g, {})[k] = (point[g][k][0], sigma)   # bootstrap sigma overrides analytic
     return res
 
@@ -365,13 +388,29 @@ def bootstrap_class(out, meta, idx, *, n_boot=200, seed=12345, **kw):
 def reduce_all(out, meta, *, estimator="cent_ch_eta10", edges_pct=None,
                n_boot=200, **kw):
     if edges_pct is None:
-        edges_pct = list(range(0, 75, 5))   # 5% classes, 0-70%
+        edges_pct = (list(sx.OO_DEFAULT_CENTRALITY_EDGES)
+                     if sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE
+                     else list(range(0, 75, 5)))
     ci = meta["centrality_estimators"].index(estimator)
     cent_col = out["cent_mult"][:, ci]
     classes = centrality_classes(cent_col, edges_pct)
     bins = []
     for bi, (lo, hi, idx) in enumerate(classes):
         rec = {"cent_low": lo, "cent_high": hi, "n_events": int(len(idx))}
+        if sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE:
+            nsub = out["nsub_used"][idx]
+            fallback = nsub == 1
+            w = _weights(nsub.astype(float), kw.get("weighting", "equal_event"))
+            # Pair denominators are the same for n=2 and n=3.
+            den = w * out["charged_cross_full_den"][idx, 0]
+            total_den = float(den.sum())
+            rec["charged_flow_sample_usage"] = {
+                "cross_full_events": int(np.count_nonzero(nsub >= 2)),
+                "same_full_fallback_events": int(np.count_nonzero(fallback)),
+                "fallback_events_without_pairs": int(np.count_nonzero(fallback & (den == 0))),
+                "same_full_pair_weight_fraction": (float(den[fallback].sum()) / total_den
+                                                    if total_den > 0 else None),
+            }
         if n_boot and n_boot > 0:
             # distinct seed per class so replicate r in different classes is not artificially aligned
             rec["observables"] = bootstrap_class(out, meta, idx, n_boot=n_boot, seed=12345 + bi, **kw)
@@ -382,6 +421,9 @@ def reduce_all(out, meta, *, estimator="cent_ch_eta10", edges_pct=None,
         bins.append(rec)
     sigma_kind = "bootstrap" if (n_boot and n_boot > 0) else "jackknife/SEM (analytic)"
     return {"estimator": estimator, "edges_pct": edges_pct, "bins": bins,
+            "analysis_profile": sx.analysis_profile(meta),
+            "observable_definitions": (sx.oo_observable_definitions()
+                if sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE else {}),
             "weighting": kw.get("weighting", "equal_event"),
             "y_window": kw.get("y_window", 0.5),
             "charged_window": kw.get("charged_window", "eta05"),
@@ -437,6 +479,13 @@ def validate_against_cache(prefix, cache_dir, zstd="zstd", rtol=1e-9, atol=1e-6)
     rec_diff_num = {sp: np.zeros(n) for sp in poi_check}
     rec_diff_den = {sp: np.zeros(n) for sp in poi_check}
     rec_et_tv = np.zeros(n)
+    oo_adjusted = sx.analysis_profile(meta) == sx.OO_ANALYSIS_PROFILE
+    rec_extra = {}
+    if oo_adjusted:
+        rec_extra = {key: np.zeros_like(out[key]) for key in
+                     ("charged_cross_full_num", "charged_cross_full_den",
+                      "charged_mean_pT_N", "charged_mean_pT_sum_pT")}
+        pt_mask, boundary = sx._charged_mean_pt_mask(cmeta["fingerprint"])
     y_mask = window_bin_mask(meta["y_hist_inner_edges"], 0.5)
 
     row = 0
@@ -465,6 +514,30 @@ def validate_against_cache(prefix, cache_dir, zstd="zstd", rtol=1e-9, atol=1e-6)
                 rec_diff_den[sp][row:row + ne] = _per_event_sum(dden, offs, nsub)
             central = z[f"get#total_visible#sum_ET_total"][:, eta_mask].sum(axis=1)
             rec_et_tv[row:row + ne] = _per_event_sum(central, offs, nsub)
+            if oo_adjusted:
+                for wi, window in enumerate(sx.CHARGED_PTH_KEYS):
+                    counts = z[f"pth#{window}#N"]
+                    pts = z[f"pth#{window}#sum_pT"]
+                    rec_extra["charged_mean_pT_N"][row:row+ne, wi] = (
+                        counts[:, pt_mask].sum(axis=1) - .4 * counts[:, boundary])
+                    rec_extra["charged_mean_pT_sum_pT"][row:row+ne, wi] = (
+                        pts[:, pt_mask].sum(axis=1) - .104 * counts[:, boundary])
+                for i, k in enumerate(nsub):
+                    a, b = int(offs[i]), int(offs[i+1])
+                    m = z[f"fl#{ch}#m_full"][a:b].astype(float)
+                    for hi, harmonic in enumerate(sx.OO_CROSS_HARMONICS):
+                        q = z[f"fl#{ch}#q{harmonic}_full"][a:b]
+                        # Sum ordered distinct pairs via prefix sums, independently
+                        # of the extractor's squared-total minus diagonal formula.
+                        if k >= 2:
+                            den = 2 * np.sum(m[1:] * np.cumsum(m)[:-1]) / (k-1)
+                            num = 2 * np.sum((q[1:] * np.conj(np.cumsum(q)[:-1])).real) / (k-1)
+                        elif k == 1 and m[0] >= 2:
+                            den, num = m[0]*(m[0]-1), abs(q[0])**2-m[0]
+                        else:
+                            den, num = 0., 0.
+                        rec_extra["charged_cross_full_num"][row+i, hi] = num
+                        rec_extra["charged_cross_full_den"][row+i, hi] = den
             row += ne
         finally:
             try:
@@ -492,6 +565,9 @@ def validate_against_cache(prefix, cache_dir, zstd="zstd", rtol=1e-9, atol=1e-6)
         ok &= _check(f"{sp} flow_diff_num (n=2)", out["flow_diff_num"][:, sci, h2], rec_diff_num[sp])
         ok &= _check(f"{sp} flow_diff_den (n=2)", out["flow_diff_den"][:, sci, h2], rec_diff_den[sp])
     ok &= _check("total_visible central ET", out["et_central"][:, mi_tv, fi_et], rec_et_tv)
+
+    for key, recomputed in rec_extra.items():
+        ok &= _check(key, out[key], recomputed)
 
     # equal-event vs all-oversample, a few classes (sanity + physics-impact report)
     print("\nEqual-event vs all-oversample (charged v2{2}, dNch/deta; pi+ <pT>):")
@@ -541,7 +617,7 @@ def main():
     rp.add_argument("--estimator", default="cent_ch_eta10",
                     choices=sx.CENTRALITY_LABELS)
     rp.add_argument("--bin-edges", default=None,
-                    help="Comma percentile edges, e.g. 0,5,10,...,70 (default 5%% to 70%%).")
+                    help="Comma percentile edges (OO profile: 1%% to 5%% then 5%% to 80%%; baseline: 5%% to 70%%).")
     rp.add_argument("--y-window", type=float, default=0.5)
     rp.add_argument("--charged-window", default="eta05", choices=["eta05", "eta10"])
     rp.add_argument("--weighting", default="equal_event", choices=["equal_event", "all_oversample"])

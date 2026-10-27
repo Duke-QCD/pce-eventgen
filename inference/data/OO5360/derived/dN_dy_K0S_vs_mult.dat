@@ -1,7 +1,9 @@
-# ALICE Preliminary, SQM2026 Pucillo PDF p.21; |y|<0.5; full-pT extrapolated dN/dy of K0S
-# (baryons: particle+antiparticle). Raster-digitized from staging/dN_dy_K0S_vs_multiplicity_VALUE_ONLY.csv.
-# err = ASSUMED 10% of value (digitization + x-axis + typical syst), NOT experimental.
-# Compared to the model at matched <dNch/deta> (kind='vs_mult'); no percentile mapping.
+# ALICE Preliminary SQM2026; ALI-PREL-624421; PDF p.21; |y|<0.5; full-pT extrapolated.
+# K0S is single-species; Xi/Omega are particle+antiparticle (mean pT of the combined sample).
+# err: digitized total experimental uncertainty + conservative pixel-reading margin where resolved;
+# otherwise historical ASSUMED error, explicitly flagged per point in the uncertainty JSON.
+# Source, pixel coordinates, uncertainty components/status: ../uncertainties/dN_dy_K0S_vs_mult.json
+# Central values retained. No multiplicity-axis errors or covariance encoded.
 # dNch_deta val err
 11.7083 0.777234 0.0777234
 26.9026 1.66611 0.166611

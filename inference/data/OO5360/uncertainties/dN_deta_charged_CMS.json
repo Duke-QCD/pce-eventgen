@@ -1,0 +1,92 @@
+{
+  "source_url": "https://cms-results.web.cern.ch/cms-results/public-results/publications/HIN-25-010/CMS-HIN-25-010_Figure_005-a.pdf",
+  "source_sha256": "de001a60c023d4635f272174cdef98b205e797da6318178224110ab808f18c0e",
+  "method": "Independent SVG extraction of square-marker centers and grey systematic-band edges; linear axis calibration from plot frame. SVG coordinates rounded by Poppler; not experimental tables.",
+  "comparison_absolute_tolerance": 0.005,
+  "rows": [
+    {
+      "cent_low": 0,
+      "cent_high": 5,
+      "value": 134.96687768744354,
+      "error": 3.9568277024992473
+    },
+    {
+      "cent_low": 5,
+      "cent_high": 10,
+      "value": 106.8992775669979,
+      "error": 2.7834237880156576
+    },
+    {
+      "cent_low": 10,
+      "cent_high": 15,
+      "value": 90.91388160192713,
+      "error": 2.5773487503763994
+    },
+    {
+      "cent_low": 15,
+      "cent_high": 20,
+      "value": 77.85305654923215,
+      "error": 2.376919482083696
+    },
+    {
+      "cent_low": 20,
+      "cent_high": 25,
+      "value": 66.4257756097561,
+      "error": 2.133205420054207
+    },
+    {
+      "cent_low": 25,
+      "cent_high": 30,
+      "value": 56.679087744655234,
+      "error": 1.9948810599217104
+    },
+    {
+      "cent_low": 30,
+      "cent_high": 35,
+      "value": 48.122741824751586,
+      "error": 1.8095077386329348
+    },
+    {
+      "cent_low": 35,
+      "cent_high": 40,
+      "value": 40.688046010237876,
+      "error": 1.9384221619993978
+    },
+    {
+      "cent_low": 40,
+      "cent_high": 45,
+      "value": 34.31760024089131,
+      "error": 1.5102754591990297
+    },
+    {
+      "cent_low": 45,
+      "cent_high": 50,
+      "value": 28.684884311954228,
+      "error": 1.753048840710636
+    },
+    {
+      "cent_low": 50,
+      "cent_high": 55,
+      "value": 23.825655164107197,
+      "error": 1.627898343872341
+    },
+    {
+      "cent_low": 55,
+      "cent_high": 60,
+      "value": 19.574300271002695,
+      "error": 1.4622855766335439
+    },
+    {
+      "cent_low": 60,
+      "cent_high": 65,
+      "value": 15.925173381511591,
+      "error": 1.1178859379704913
+    },
+    {
+      "cent_low": 65,
+      "cent_high": 70,
+      "value": 12.648675459199021,
+      "error": 1.2176301114122254
+    }
+  ]
+}

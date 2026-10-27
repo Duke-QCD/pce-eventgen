@@ -1,8 +1,6 @@
 # Initialization inputs
 
-Inputs from which every design's bundle (`parameters.dat`, `music_input`,
-`initial.hdf`) is created. See the [physics reference](../../docs/reference/physics.md)
-for how each parameter enters the models.
+Inputs from which every design's bundle (`parameters.dat`, `music_input`, `initial.hdf`) is created. See the [physics reference](../../docs/reference/physics.md) for how each parameter enters the models.
 
 | File | Purpose |
 |---|---|
@@ -11,14 +9,6 @@ for how each parameter enters the models.
 | [music_input_template](music_input_template) | Fixed MUSIC settings with `{}` placeholders filled from each design's parameters (`[files] music_input_template`) |
 | [parameters.dat](parameters.dat) | Standalone example for the [first-run guide](../../docs/getting-started.md): design row 0 rendered for AuAu200 exactly as `run_designs.py` renders a campaign design |
 
-`run_designs.py` renders each design's `parameters.dat` from the base template,
-the design-table row, and the system constants in `SYSTEM_CONFIG`
-([run_designs.py](../../models/run_designs.py)): species, normalization column,
-cross section (4.23 fm² for AuAu200) and transverse grid. Initialization then
-copies `parameters.dat` and the template into the design directory, renders
-`music_input`, and runs TRENTo to write `initial.hdf`. An existing bundle is
-never re-rendered when these templates change.
+`run_designs.py` renders each design's `parameters.dat` from the base template, the design-table row, and the system constants in `SYSTEM_CONFIG` ([run_designs.py](../../models/run_designs.py)): species, normalization column, cross section (4.23 fm² for AuAu200) and transverse grid. Initialization then copies `parameters.dat` and the template into the design directory, renders `music_input`, and runs TRENTo to write `initial.hdf`. An existing bundle is never re-rendered when these templates change.
 
-`nersc/configure_user.py` points new profiles at these files. Keep each model
-matrix paired with the design table that generated it; inference joins on the
-zero-based `design_index`.
+`nersc/configure_user.py` points new profiles at these files. Keep each model matrix paired with the design table that generated it; inference joins on the zero-based `design_index`.

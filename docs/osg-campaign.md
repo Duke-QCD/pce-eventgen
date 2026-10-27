@@ -1,19 +1,12 @@
 # OSG campaign runbook
 
-For a new account, begin with [OSG setup](../osg/README.md): NERSC initialization
-without NERSC generation, AP Python/tools, personal submit settings and the
-approved image. The [flag index](reference/cli-osg.md) provides option lookup.
+Complete [OSG setup](../osg/README.md) first. This runbook stages NERSC initial conditions on the AP, submits per-event HTCondor jobs and drains terminal output back to NERSC for [cache/analysis](nersc-campaign.md). The [flag index](reference/cli-osg.md) lists helper options.
 
-OSG generates events from initial conditions prepared on NERSC. On the OSPool
-access point (AP), stage a design, submit one HTCondor job per missing event,
-and drain terminal output back to its NERSC raw tree. Then use the
-[NERSC campaign guide](nersc-campaign.md) for survey, cache/publish, review/reap
-and analysis. Inference remains separate.
+Replace example account/storage paths. OSG helpers do not read the INI: match their NERSC root, system and target to `[run] directory`, `system` and `nevents`.
 
-Replace account, allocation and storage paths in the examples with your own.
-The OSG scripts do not read the campaign INI. Their NERSC root, system and
-event target must match `[run] directory`, `system` and `nevents` in the NERSC
-campaign config.
+For a check without copying inputs or running events, complete the [read-only setup checks](../osg/README.md#validation-without-copying-inputs-or-running-events), configure the environment/access below, and stop after the [staging preview](#read-only-staging-preview). The smoke procedure and normal-operation sections contain real transfers and submissions.
+
+Here, a **design point** is one row of the parameter table (`design_027`); the campaign spans many points. NERSC may progress upward while OSG progresses downward through the same campaign/raw root. Assign disjoint point ranges and maintain a stopping boundary. The marker guard does not reserve points or detect queued/running NERSC jobs. Current staging refuses to mix native NERSC and OSG terminal events within one point.
 
 ## Scripts and deployment
 
@@ -26,51 +19,23 @@ campaign config.
 | `osg/events_fanout.submit`, `osg/job.sh` | HTCondor submission and the per-event worker |
 | `osg/heavy-ion.def`, `osg/container_paths.sh` | Container build recipe and its runtime paths |
 
-The sweep and drain are separate processes. The sweep does not start the drain.
-The deployed Python helpers in these examples live in the AP home directory;
-the submit file and worker live in `$HOME/osgrun`, beside its `stage/` tree.
+Sweep and drain run separately. These examples keep Python helpers in `$HOME/osgrun/helpers` and the submit/worker files in `$HOME/osgrun`, beside `stage/`. Deploy/check them using [setup section 3](../osg/README.md#3-deploy-the-ap-helpers-and-python-environment), which combines directory creation and file transfer into one authenticated SSH connection. For an independent test setup, replace `osgrun` with its separate directory name throughout, including the submit file's log path.
 
-Deploy the helpers and check them on the AP as described in
-[OSG setup, section 3](../osg/README.md#3-deploy-the-ap-helpers-and-python-environment).
+Before updates, stop sweep submissions, copy complete helpers and check them. Replace a checked worker atomically, outside active submission/startup, and keep AP copies matched to the reviewed source.
 
-Those checks catch syntax/import failures and unavailable dependencies; they do
-not test event execution, SSH access, the submit policy or the container. For
-updates, stop the sweep before replacing helpers, copy files completely and
-check them before restarting. Stage an updated worker as a separate file and
-rename it into place after checking it; avoid changing `job.sh` while jobs are
-being submitted or starting. Keep AP copies matched to the reviewed checkout.
+Keep the stage tree under the submit directory (`initialdir = stage/$(slot)`). Shared logs use `$ENV(HOME)/osgrun/fanout.log`; stdout/stderr are per-slot. Verify `IMAGE`, `PROJECT` and resources: defaults are one CPU, 2 GB memory and 4 GB disk, with worker threads clamped to one. Activate the AP Python environment in each session.
 
-The submit file's `initialdir = stage/$(slot)` requires the stage tree under
-the submit directory. Its shared Condor log is `$ENV(HOME)/osgrun/fanout.log`;
-`output` and `error` are per-slot files. Set `IMAGE` and `PROJECT` at the top
-of the file and check the resources before submission. Current requests are one CPU, 2 GB memory
-and 4 GB disk; `job.sh` clamps numerical-library/OpenMP threads to one CPU.
-Use the AP-supported Python environment in every session; the setup guide
-shows a venv recipe. `--help` on each helper gives its actual parser options,
-for example `python3 "$HOME/stage_osg_design.py" --help`. These scripts do not
-inherit the NERSC campaign dispatcher's INI settings.
+Changes to the baked runner, converter, models or data require [a validated, newly versioned image](../osg/README.md#5-build-a-new-image-when-the-approved-image-needs-updating). The image runs MUSIC → iS3D → SMASH; NERSC prepares initial conditions.
 
-The runner, converter, model binaries and physics data are baked into the image;
-copying new AP helpers does not update them. Rebuild using the context listed in
-`osg/heavy-ion.def` when those inputs change, validate the image, publish under
-a new versioned filename and update the submit URI. Initial conditions are
-prepared by TRENTO on NERSC; the image runs MUSIC → iS3D → SMASH.
-
-`job.sh` is transferred separately from the image, so it can change without an
-image rebuild. Submit-file edits affect new submissions. Do not assume editing
-`job.sh` changes running jobs or every queued retry: executable spooling and
-transfer settings matter. Validate a new submission when changing worker code.
-See HTCondor's [submission reference](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html#copy_to_spool).
+`job.sh` transfers separately from the image. Submit edits affect new submissions; worker edits may not reach existing jobs/retries because of spooling/transfer settings. Validate a fresh submission; see [HTCondor spooling](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html#copy_to_spool).
 
 ## AP environment and NERSC access
 
-Save these exports as `$HOME/osgrun/campaign_env.sh` on the AP and adjust them
-for the intended campaign. This is a shell convenience file, not a script-read
-config format:
+Save this entire block as `$HOME/osgrun/campaign_env.sh` on the **AP**, replacing the example selections with those of the intended campaign. For an isolated setup, use its directory (for example `osgrun-test`) both in `OSG_WORK` and in every command that sources this file. This is a shell convenience file, not a script-read config format. The Python environment must already have been created in [setup section 3](../osg/README.md#3-deploy-the-ap-helpers-and-python-environment).
 
 ```bash
 export OSG_WORK="$HOME/osgrun"
-export OSG_SCRIPTS="$HOME"
+export OSG_SCRIPTS="$OSG_WORK/helpers"
 export OSG_STAGE="$OSG_WORK/stage"
 export OSG_CAMPAIGN=my_campaign
 export OSG_SYSTEM=AuAu200
@@ -81,22 +46,23 @@ export NERSC_HOST=perlmutter
 export NERSC_RAW_ROOT=/pscratch/sd/y/your_nersc_user/my_campaign  # the profile's [run] directory
 export NERSC_IC_TEMPLATE="$NERSC_RAW_ROOT/design_{design}/$OSG_SYSTEM"
 export SSH_PROXY=sshproxy   # command or absolute path to your installed client
+
+export PYTHONNOUSERSITE=1
+source "$OSG_WORK/.venv/bin/activate"
 ```
 
-The AP slot path is
-`$OSG_STAGE/$OSG_CAMPAIGN/design_N/$OSG_SYSTEM/EVENT`.
-The drain lands output at `$NERSC_RAW_ROOT/design_N/$OSG_SYSTEM/EVENT`.
-`--ap-stage-root` takes `$OSG_STAGE`; the drain's `--ap-root` takes
-`$OSG_STAGE/$OSG_CAMPAIGN`. The two campaign directory names need not match.
-Keep the initialized event target fixed, including when staging only a gap.
-Add activation of your AP Python environment and `export PYTHONNOUSERSITE=1`
-to this file. For setup's isolated smoke campaign, save `OSG_CAMPAIGN=pce-osg-smoke`,
-`OSG_DESIGN=000`, `OSG_EVENT_TARGET=2` and that profile's literal NERSC raw root
-here before starting either tmux session. AP and NERSC usernames can differ.
+The AP slot path is `$OSG_STAGE/$OSG_CAMPAIGN/design_N/$OSG_SYSTEM/EVENT`. The drain lands output at `$NERSC_RAW_ROOT/design_N/$OSG_SYSTEM/EVENT`. `--ap-stage-root` takes `$OSG_STAGE`; the drain's `--ap-root` takes `$OSG_STAGE/$OSG_CAMPAIGN`. The two campaign directory names need not match. **Changing `OSG_CAMPAIGN` isolates AP slots only; it does not isolate NERSC output.** A live cross-check needs a separate `NERSC_RAW_ROOT` too.
 
-Install the sshproxy client using the current
-[NERSC MFA instructions](https://docs.nersc.gov/connect/mfa/#sshproxy).
-On the AP, configure the SSH host used by both staging and draining:
+Keep `OSG_EVENT_TARGET` equal to the original initialized `nevents`, including for a gap or dry-run: it sets the full position range and event-directory padding, not a submission limit. Use the actual system (`OO5360`, for example), not the `AuAu200` example by default. For setup's new isolated smoke campaign, save `OSG_CAMPAIGN=pce-osg-smoke`, `OSG_DESIGN=000`, `OSG_EVENT_TARGET=2` and that profile's literal NERSC raw root here before starting either tmux session. Obtain the raw root from `printf '%s\n' "$HIC_RAW_ROOT"` in the activated NERSC shell; do not copy an unexpanded `${HIC_RAW_ROOT}` from `--print-config`. AP and NERSC usernames can differ. If using a supported environment outside `$OSG_WORK/.venv`, replace the activation line accordingly.
+
+Source the file in each new AP shell or tmux session. First test any existing AP→NERSC SSH configuration with one connection:
+
+```bash
+source "$HOME/osgrun/campaign_env.sh"
+ssh -o BatchMode=yes "$NERSC_HOST" 'whoami'
+```
+
+Expect `NERSC_USER`. If this succeeds, reuse the existing credentials; do not reinstall or renew them merely because a new shell started. If access has not been configured, install the sshproxy client using the current [NERSC MFA instructions](https://docs.nersc.gov/connect/mfa/#sshproxy). Configure the SSH host used by both staging and draining, preserving any working entries:
 
 ```text
 Host perlmutter
@@ -106,7 +72,7 @@ Host perlmutter
     IdentitiesOnly yes
 ```
 
-Adjust `User` to match `NERSC_USER`, then in each session:
+Adjust `User` to match `NERSC_USER`. Obtain or renew the certificate when needed, then check unattended access:
 
 ```bash
 source "$HOME/osgrun/campaign_env.sh"
@@ -116,23 +82,44 @@ ssh -o BatchMode=yes "$NERSC_HOST" 'echo ok'
 ssh-keygen -L -f "$HOME/.ssh/nersc-cert.pub" | grep Valid
 ```
 
-Renew before expiry. The default certificate lifetime is 24 hours; inspect the
-actual expiry printed by the client. New SSH connections use the refreshed key,
-so a running drain can recover without restarting. See the linked NERSC
-instructions for client installation and certificate options.
-Resolve first-connection host-key prompts interactively before the batch-mode
-check. Staging/drain need unattended AP→NERSC access, including a readable
-source bundle and writable destination. Do not put passwords or OTPs in the
-environment file.
+The interactive SSH check is needed to resolve a first host-key prompt; it is not required on every login. Require unattended AP→NERSC access to readable bundles and writable destinations before live work. Inspect actual certificate expiry (default 24 hours) and renew before it; subsequent drain connections use refreshed keys. Keep passwords/OTPs out of the environment file.
+
+## Read-only staging preview
+
+On the **AP**, source the complete environment file and preview the selected literal design suffix. This command does not copy inputs, create stage directories, write a manifest, delete files or submit jobs:
+
+```bash
+source "$HOME/osgrun/campaign_env.sh"
+python "$OSG_SCRIPTS/stage_osg_design.py" \
+  --design "$OSG_DESIGN" --nersc-host "$NERSC_HOST" \
+  --nersc-ic-dir "$NERSC_IC_TEMPLATE" --pscratch-root "$NERSC_RAW_ROOT" \
+  --ap-stage-root "$OSG_STAGE" --campaign "$OSG_CAMPAIGN" \
+  --system "$OSG_SYSTEM" --total-nevents "$OSG_EVENT_TARGET" \
+  --manifest "$OSG_WORK/manifest_${OSG_DESIGN}.txt" --dry-run
+```
+
+It checks SSH and queries NERSC completion/partition markers, then reports the gap. For a fresh two-event smoke bundle, expect a gap of two. An already drained or reaped point can report nothing to stage; native NERSC terminal events cause a guard refusal. The guard does not check for active writers.
+
+The preview **does not check that the source bundle exists or read its contents**. A missing destination directory can still yield the full event gap, so success alone does not verify the campaign path. Check the literal raw root and the three-file bundle separately using [setup's read-only procedure](../osg/README.md#validation-without-copying-inputs-or-running-events). Stop here for validation without copying inputs or running events.
+
+### Command effects
+
+| Command | What it does |
+|---|---|
+| `stage_osg_design.py --dry-run` | Queries NERSC markers and reports a gap; no input copy, local writes or submissions |
+| `stage_osg_design.py` without `--dry-run` | Copies the bundle to the AP, writes per-event inputs and a manifest; runs no models and submits no jobs |
+| `sweep_osg_designs.py --dry-run` | Prints a range/plan only; does not contact NERSC or validate individual points |
+| `sweep_osg_designs.py` without `--dry-run` | Stages inputs, submits HTCondor jobs and removes drained staging trees |
+| `condor_submit -dry-run FILE ...` | Parses a submit file and writes job descriptions using an actual manifest/staged inputs; submits nothing |
+| `drain_osg_events_batched.py --dry-run` | Scans AP output and queries NERSC markers when eligible output exists; transfers/deletes nothing |
+| Drain with `--no-delete` | Transfers, verifies and writes NERSC markers, retaining AP copies; it is not a dry-run |
+| Drain without either retention flag | Transfers/verifies output, commits NERSC markers and deletes verified AP event directories |
 
 ## First smoke campaign
 
-Use the separate two-event NERSC bundle from [setup](../osg/README.md#2-prepare-a-two-event-input-bundle-on-nersc).
-Save its selections in `campaign_env.sh` first; sourcing that file in another
-terminal must keep the smoke root, target `2` and literal design suffix `000`.
-Keep the sweep stopped during this manual test.
+This is a **live end-to-end test**: it copies inputs, submits two real event jobs and drains their results to NERSC. Skip it if your current scope is read-only validation of an existing campaign. Use the separate two-event NERSC bundle from [setup](../osg/README.md#2-prepare-a-two-event-input-bundle-on-nersc). Save its selections in `campaign_env.sh` first; sourcing that file in another terminal must keep the smoke root, target `2` and literal design suffix `000`. Keep the sweep stopped during this manual test.
 
-On the AP, preview staging:
+Complete the [read-only staging preview](#read-only-staging-preview) first. Then, with those smoke selections still active, run staging **without** `--dry-run`. This copies the bundle and splits its two inputs on the AP, but does not yet submit jobs:
 
 ```bash
 source "$HOME/osgrun/campaign_env.sh"
@@ -141,14 +128,10 @@ python3 "$OSG_SCRIPTS/stage_osg_design.py" \
   --nersc-ic-dir "$NERSC_IC_TEMPLATE" --pscratch-root "$NERSC_RAW_ROOT" \
   --ap-stage-root "$OSG_STAGE" --campaign "$OSG_CAMPAIGN" \
   --system "$OSG_SYSTEM" --total-nevents "$OSG_EVENT_TARGET" \
-  --manifest "$OSG_WORK/manifest_${OSG_DESIGN}.txt" --dry-run
+  --manifest "$OSG_WORK/manifest_${OSG_DESIGN}.txt"
 ```
 
-Expected: SSH succeeds, no conflicting NERSC terminal events, and a gap of two.
-This preview does not pull/read the bundle or write a manifest. Run the same
-command **without** `--dry-run` to stage it. Expected: two verified one-dataset
-HDF5 inputs and a two-row manifest, ending in `/0` and `/1`. A 10,000-event
-campaign instead uses four-digit event names; always keep the original target.
+Expected: two verified one-dataset HDF5 inputs and a two-row manifest, ending in `/0` and `/1`. A 10,000-event campaign instead uses four-digit event names; always keep the original target.
 
 Inspect the staged inputs and parse the personal submit file before submitting:
 
@@ -164,21 +147,15 @@ wc -l "manifest_${OSG_DESIGN}.txt"
 )
 ```
 
-Continue only when the manifest contains the intended two slots and the parser
-succeeds. Inspect the resulting ClassAds for the selected image, project,
-working directories, input/output files and resource requests. `condor_submit
--dry-run FILE` writes job descriptions and submits nothing; it does not prove
-that workers can fetch the image or execute the models. See the
-[submission reference](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html#options).
+Require two intended slots and a successful parse. Inspect the ClassAds' image, project, directories, transfers and resources. This dry-run submits nothing and does not test image retrieval/model execution; see [submission options](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html#options).
 
-With no existing jobs/transfers for this design, submit once:
+With no existing jobs/transfers for this design, the following command **submits the two real smoke jobs**. Submit once:
 
 ```bash
 condor_submit -maxjobs 2 events_fanout.submit
 ```
 
-Record the reported cluster ID. Replace the example number below, then inspect
-queue, holds, history and the per-slot `job.<cluster>.<process>.out/.err` files:
+Record the reported cluster ID. Replace the example number below, then inspect queue, holds, history and the per-slot `job.<cluster>.<process>.out/.err` files:
 
 ```bash
 export OSG_CLUSTER=123456  # replace with the newly reported cluster ID
@@ -187,16 +164,9 @@ condor_q -hold
 condor_history "$OSG_CLUSTER" -af ClusterId ProcId JobStatus ExitCode
 ```
 
-Wait for returned `outbox/` directories with unambiguous terminal output.
-Job exit zero and an empty queue are insufficient by themselves. Each slot
-needs one nonempty particle list and `afterburner.done`, or a clean
-`hydro.no_surface` marker. If a slot fails, preserve its logs and follow the
-recovery sections; do not restage over queued/running jobs. Workers start fresh
-from their single IC after eviction/retry; this workflow has no event checkpoint.
+Wait for terminal outboxes: one nonempty particle list plus `afterburner.done`, or a clean `hydro.no_surface`. Exit zero or queue empty is insufficient. Preserve failed-slot logs and never restage over active jobs. Evicted/retried workers start fresh from their IC; there is no event checkpoint.
 
-After the cluster has left the queue and transfers have stopped, allow the
-default 60-second output age. Preview the drain, then retain AP copies on the
-first real transfer:
+After the cluster has left the queue and transfers have stopped, allow the default 60-second output age. Preview the drain, then retain AP copies on the first real transfer:
 
 ```bash
 python3 "$OSG_SCRIPTS/drain_osg_events_batched.py" \
@@ -209,37 +179,17 @@ python3 "$OSG_SCRIPTS/drain_osg_events_batched.py" \
   --design "$OSG_DESIGN" --no-delete
 ```
 
-Expect two eligible events and `drained-nodel=2`. If output is still too young,
-wait and repeat; a zero exit with no eligible work does not establish completion.
-On NERSC, activate the OSG smoke profile and run its `status --details`; expect
-two terminal slots with no blockers and a `drained.done` in each event directory.
-The three-file initialization bundle must remain intact.
+Expect two eligible events and `drained-nodel=2`. If output is still too young, wait and repeat; a zero exit with no eligible work does not establish completion. On NERSC, activate the OSG smoke profile and run its `status --details`; expect two terminal slots with no blockers and a `drained.done` in each event directory. The three-file initialization bundle must remain intact.
 
-Save any per-slot stdout/stderr you need before cleanup. Run the drain again
-without `--dry-run` or `--no-delete` only after inspecting those results. It
-checks the committed NERSC markers and removes the verified AP slot copies,
-including their ICs and per-slot logs. The shared `fanout.log` remains.
-Repeat actual staging afterward to check gap recovery: it should replace the
-manifest with an empty file and stage no events. Do not submit an empty manifest.
+Preserve needed slot logs before running drain without either retention flag. It removes committed AP copies, including ICs/logs; shared `fanout.log` remains. Restaging should then produce an empty gap manifest. Do not submit it.
 
-For the analysis interface test, follow the NERSC guide with this profile and
-its small resource/bin settings. At least one smoke event must contain particles
-to exercise cache publication; an all-no-surface sample needs a fresh smoke
-campaign with a larger fixed bound. Never increase an already initialized bound.
+For the analysis interface test, follow the NERSC guide with this profile and its small resource/bin settings. At least one smoke event must contain particles to exercise cache publication; an all-no-surface sample needs a fresh smoke campaign with a larger fixed bound. Never increase an already initialized bound.
 
 ## Normal operation: drain and sweep in separate tmux sessions
 
-After smoke validation, prepare a separate production NERSC profile/raw root
-and AP campaign directory with the approved full event target and design range.
-Initialize those designs without NERSC job submission. Update `campaign_env.sh`
-and the matching NERSC profile together; do not turn the initialized two-event
-smoke tree into production by editing its target. Replace the example range
-99–50 below with the designs assigned to OSG.
+For production, use a campaign with its original full target, separate from the two-event smoke campaign. An existing initialized production campaign can keep its NERSC profile/raw root; configure the AP selections to match it. A new campaign needs its own profile/raw root and initialization. Initialize OSG-owned points without submitting NERSC event workers. Keep the AP environment and NERSC INI selections consistent. Replace the example 99–50 range with confirmed OSG-owned design points, preserving their bundles and event bound.
 
-First confirm ownership: no NERSC jobs should be generating the OSG-owned
-designs. The staging guard detects NERSC terminal markers without `drained.done`;
-it does not discover queued jobs or every in-progress event. Preserve
-`initial.hdf`, `parameters.dat` and `music_input` for every selected design.
+Check queued/running NERSC jobs yourself: the staging guard detects terminal NERSC output without `drained.done`, not every active writer. If the platforms traverse the table from opposite ends, bound their ranges so they cannot meet at an active point. Increasing/decreasing traversal order alone provides no coordination.
 
 ### Drain session
 
@@ -252,17 +202,9 @@ python3 "$OSG_SCRIPTS/drain_osg_events_batched.py" \
   --auto-discover --loop --interval 180 --stop-empty 300
 ```
 
-Detach with Ctrl-b d. The drain rescans staged designs each cycle. The long
-idle limit allows gaps between designs; it is not a completion test. With these
-settings it stops after roughly 15 hours of consecutive cycles with no eligible
-output. Jobs may still be queued, or incomplete/conflicting outboxes may remain.
-Check the session and restart it if it has exited before the campaign is finished.
+Detach with Ctrl-b d. Drain rescans each cycle and exits after roughly 15 consecutive idle hours with these settings. Idle does not mean complete: queued work or conflicting outboxes can remain. Check/restart the process as needed.
 
-A drain pass accepts either one nonempty particle-list variant plus
-`afterburner.done`, or a clean `hydro.no_surface` with no contradictory particle,
-hydro-done or afterburner-done artifacts. `.unfinished` is accepted when its
-done marker is present. No-surface events are valid zero-output events and
-must drain too. Empty/conflicting/incomplete output is retained for inspection.
+Drain accepts the terminal states used in the smoke test, including completed `.unfinished` output and no-surface events. It retains empty, incomplete or conflicting output for inspection.
 
 For eligible output older than `--min-age` (default 60 seconds), the drain:
 
@@ -271,17 +213,9 @@ For eligible output older than `--min-age` (default 60 seconds), the drain:
 3. Flattens and checks terminal artifacts and particle-file size on NERSC.
 4. Commits `drained.done`, then removes the corresponding AP event directory.
 
-Only the terminal outbox is returned. The worker's hydro surface and local
-surface archive are not transferred to NERSC; keep the initialized bundle for
-any later rerun. Draining also deletes per-slot Condor logs along with each AP
-slot, so preserve logs needed for diagnostics before enabling deletion.
+Surfaces/worker archives do not transfer. Preserve initialized bundles for reruns and copy diagnostic slot logs before drain deletes their AP directories.
 
-Verification is not a content-checksum comparison. An existing `drained.done`
-permits cleanup of a lingering AP copy on retry. Transfer/query/verification
-failures preserve AP output; failed local deletion is reported as pending.
-One-pass mode exits nonzero for these failures; loop mode retries. Use
-`--dry-run` for a read-only pass or `--no-delete` to retain verified AP copies.
-Retaining copies also prevents the sweep's normal drained-output teardown.
+Verification checks terminal artifacts/size, not content checksums. `drained.done` permits cleanup of lingering AP copies. Query/transfer/verification failures preserve output; deletion failures are pending. One-pass mode returns nonzero, loop mode retries. `--dry-run` reads only; `--no-delete` retains verified copies and prevents sweep teardown.
 
 ### Sweep session
 
@@ -298,50 +232,21 @@ python3 "$OSG_SCRIPTS/sweep_osg_designs.py" \
   --submit-dir "$OSG_WORK" --max-running 2 --dry-run
 ```
 
-The sweep dry-run prints the plan only; it does not query NERSC or check each
-design. After reviewing the range and paths, rerun without `--dry-run` and detach.
-The default helper paths find the staging/splitting scripts beside the sweep.
+The sweep dry-run prints the plan only; it does not query NERSC or check each design. After reviewing the range and paths, rerun without `--dry-run` and detach. The default helper paths find the staging/splitting scripts beside the sweep.
 
-The range is descending and inclusive. Design numbers are zero-padded to NERSC's
-three digits (`--design-width 3` by default) through staging, submission,
-draining and teardown, so `--start 27 --floor 20` selects `design_027` through
-`design_020`. Manual staging uses the suffix exactly as supplied, such as
-`--design 027`.
+The range is descending/inclusive and defaults to three-digit design suffixes (`027`); manual staging uses the literal suffix supplied.
 
-At most `--max-running` designs belong to one sweep process. Staging uses a
-free running slot; there is no third staged design while two slots are full.
-For each submitted cluster, the sweep waits for an empty queue and no AP
-particle/no-surface outbox artifacts before removing its remaining staging tree.
-It then advances. This checks queue/drain state, not the requested event total.
-Failed or removed jobs can leave a short design that the sweep reports processed.
+One sweep tracks at most `--max-running` designs; staging needs a free slot. It tears down a design after its queue is empty and AP terminal outboxes are drained. This does not verify the event target: failed/removed jobs can leave gaps.
 
-The sweep copies each design manifest to `manifest.txt` and submits from
-`$OSG_WORK`; the supplied submit file queues slots from that file. No manual
-submit-file edit is needed per design. An empty gap manifest is skipped.
-Run only one sweep or manual submitter against that shared submit directory.
+Sweep copies each manifest to shared `manifest.txt`, submits from `$OSG_WORK` and skips empty gaps. Run only one sweep/manual submitter per submit directory.
 
 ## Manual staging and gap recovery
 
-Use an AP shell with the environment above loaded:
+Set the intended literal `OSG_DESIGN` suffix in production `campaign_env.sh`, then use the [read-only staging preview](#read-only-staging-preview) with those production selections.
 
-```bash
-python3 "$OSG_SCRIPTS/stage_osg_design.py" \
-  --design "$OSG_DESIGN" --nersc-host "$NERSC_HOST" \
-  --nersc-ic-dir "$NERSC_IC_TEMPLATE" --pscratch-root "$NERSC_RAW_ROOT" \
-  --ap-stage-root "$OSG_STAGE" --campaign "$OSG_CAMPAIGN" \
-  --system "$OSG_SYSTEM" --total-nevents "$OSG_EVENT_TARGET" \
-  --manifest "$OSG_WORK/manifest_${OSG_DESIGN}.txt" --dry-run
-```
+Staging dry-run queries SSH, ownership and NERSC markers without changing files; it does not check the source bundle. Drop `--dry-run` to copy the bundle, split missing positions in native HDF5 order, verify arrays and remove the pulled monolith; the NERSC bundle remains. Already drained/reaped designs receive empty manifests during real staging. A dry-run does not create or replace a manifest.
 
-This dry-run checks SSH, NERSC markers and the partition guard without pulling,
-splitting, writing manifests or deleting files. For actual staging, drop
-`--dry-run`. The stage helper skips `drained.done` event positions, splits the
-remaining IC datasets in their native order, verifies their arrays, and removes
-the pulled monolith after a successful split. Its source NERSC bundle is preserved.
-A fully drained or reaped design gets an empty manifest on a real staging pass.
-
-After staging, inspect the manifest. Only if it is nonempty and no jobs for this
-design are already queued, submit it from the submit directory:
+After staging, inspect the manifest. Only if it is nonempty and no jobs for this design are already queued, submit it from the submit directory:
 
 ```bash
 cd "$OSG_WORK"
@@ -351,9 +256,7 @@ if [ -s "manifest_${OSG_DESIGN}.txt" ]; then
 fi
 ```
 
-The `--manifest` filename is explicit here; stage defaults otherwise place it
-beside `stage/`. Manual submissions are not tracked by a running sweep. Keep
-the drain active and use the same no-overlap/restart rules below.
+The `--manifest` filename is explicit here; stage defaults otherwise place it beside `stage/`. Manual submissions are not tracked by a running sweep. Keep the drain active and use the same no-overlap/restart rules below.
 
 ## Monitoring and queue policy
 
@@ -368,25 +271,9 @@ du -sh "$HOME" "$OSG_WORK/stage"
 ssh "$NERSC_HOST" 'showquota'
 ```
 
-Reattach to each session to inspect actual progress and failures, then detach;
-`tmux ls` alone does not prove the process is healthy. Compare AP usage with the
-quota reported for your account by the AP service. `du` measures disk use; `df`
-reports shared filesystem capacity, not your personal limit. Do not assume a
-fixed home quota or a fixed drain throughput.
+Reattach to inspect process progress/errors; `tmux ls` only proves the session exists. Compare `du` usage with your AP account quota; `df` shows shared capacity. Measure rather than assume drain throughput.
 
-`events_fanout.submit` is authoritative for the retry expressions. It releases
-transfer holds (12/13) after 120 seconds while `NumJobStarts < 5`. Its removal
-rule applies only to held jobs and removes exhausted starts, codes 14/26 or jobs
-held over an hour. Running attempts are not removed merely for having five starts.
-`max_retries` governs another retry mechanism; it is not a promise that every
-missing event will eventually succeed.
-The supplied `max_idle = 400` selects a late-materialization factory and limits
-materialized non-running jobs, including held jobs, per cluster. It does not
-limit running jobs or represent campaign completion. Inspect `condor_q -factory`
-alongside per-job queue/history output, especially if a factory is paused or
-failing to materialize; the sweep's queue check queries process IDs and does
-not establish that the original event target was reached. These submit options
-are documented in the [HTCondor submission reference](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html).
+`events_fanout.submit` is authoritative for the retry expressions. It releases transfer holds (12/13) after 120 seconds while `NumJobStarts < 5`. Its removal rule applies only to held jobs and removes exhausted starts, codes 14/26 or jobs held over an hour. Running attempts are not removed merely for having five starts. `max_retries` governs another retry mechanism; it is not a promise that every missing event will eventually succeed. The supplied `max_idle = 400` selects a late-materialization factory and limits materialized non-running jobs, including held jobs, per cluster. It does not limit running jobs or represent campaign completion. Inspect `condor_q -factory` alongside per-job queue/history output, especially if a factory is paused or failing to materialize; the sweep's queue check queries process IDs and does not establish that the original event target was reached. These submit options are documented in the [HTCondor submission reference](https://htcondor.readthedocs.io/en/25.0/man-pages/condor_submit.html).
 
 | Hold code | Meaning and inspection |
 |---|---|
@@ -395,45 +282,25 @@ are documented in the [HTCondor submission reference](https://htcondor.readthedo
 | 14 | Working directory is inaccessible; confirm path and permissions. It does not prove the event drained. |
 | 26 | Site-policy hold; inspect the reason/subcode. CPU use is one possible cause. |
 
-These meanings follow the [HTCondor hold-code reference](https://htcondor.readthedocs.io/en/latest/codes-other-values/hold-reason-codes.html).
-Repeated holds require inspection; an empty queue can also mean jobs were removed.
+These meanings follow the [HTCondor hold-code reference](https://htcondor.readthedocs.io/en/latest/codes-other-values/hold-reason-codes.html). Repeated holds require inspection; an empty queue can also mean jobs were removed.
 
 ## HALTs, restarts and drain outages
 
 ### Partition guard or staging failure
 
-A staging failure stops the sweep; already submitted clusters keep running and
-the separate drain can continue. Read the actual error: SSH/certificate expiry,
-missing inputs and split failures also halt staging, not only ownership conflicts.
+A staging failure stops new sweep work while submitted clusters and drain continue. Inspect the actual cause: ownership conflict, SSH expiry, missing inputs or split failure.
 
-For a partition conflict, decide whether the design remains NERSC-owned or is
-being deliberately reassigned. Do not mark NERSC output `drained.done` to bypass
-the guard. If reassigning, stop its NERSC writers and preserve their outputs
-separately while keeping `initial.hdf`, `parameters.dat` and `music_input` at
-`NERSC_IC_TEMPLATE`, or select another preserved bundle with `--nersc-ic-dir`.
-Moving the entire source design away without changing that path breaks staging.
-Resume only after ownership and the retained input bundle are clear.
+For a partition conflict, decide whether the design remains NERSC-owned or is being deliberately reassigned. Do not mark NERSC output `drained.done` to bypass the guard. If reassigning, stop its NERSC writers and preserve their outputs separately while keeping `initial.hdf`, `parameters.dat` and `music_input` at `NERSC_IC_TEMPLATE`, or select another preserved bundle with `--nersc-ic-dir`. Moving the entire source design away without changing that path breaks staging. Resume only after ownership and the retained input bundle are clear.
 
 ### Restarting the sweep
 
-The sweep stores active cluster/design state only in memory. Restarting does not
-adopt surviving clusters, and rerunning staging can overwrite slot inputs for
-missing event positions. Before restarting, inspect every surviving cluster's
-`Iwd`, not just the highest design number.
+Sweep state is in memory; restarting does not adopt surviving clusters. Staging can overwrite slot inputs, so inspect every surviving cluster's `Iwd` before restarting.
 
-The straightforward restart is to keep draining, let all clusters from the
-previous sweep finish, confirm their eligible AP output has drained, then inspect
-NERSC event totals and restart at the highest design still needing work.
-Fully drained designs in that range will be skipped. If restarting alongside
-surviving clusters, choose a range disjoint from **all** active designs and
-budget their concurrency separately. Starting one below the highest running
-design can duplicate another still-running design.
+Prefer to let previous clusters finish/drain, survey NERSC totals, then restart at the highest incomplete design. Fully drained designs skip. To run alongside survivors, choose a range disjoint from **all** active designs and account for their concurrency; starting below only the highest active design can duplicate others.
 
 ### A drain outage or full AP home
 
-Stop the sweep first to prevent new submissions. Preserve undrained outboxes.
-For each affected cluster you intend to pause, disable its automatic removal
-before holding it, using its actual cluster ID:
+Stop the sweep first to prevent new submissions. Preserve undrained outboxes. For each affected cluster you intend to pause, disable its automatic removal before holding it, using its actual cluster ID:
 
 ```bash
 export OSG_CLUSTER=123456   # replace with the affected cluster ID
@@ -441,37 +308,18 @@ condor_qedit "$OSG_CLUSTER" PeriodicRemove False &&
   condor_hold "$OSG_CLUSTER"
 ```
 
-This scopes the change to that cluster. See [condor_qedit](https://htcondor.readthedocs.io/en/latest/man-pages/condor_qedit.html).
-Manual holds otherwise remain exposed to the submit file's held-too-long removal
-rule. Inspect space usage and remove only known inactive logs/build copies or
-other disposable data; do not delete a slot containing unverified output. Free
-enough room to renew the SSH certificate, check NERSC destination writability
-and quota, then watch the drain complete successful passes.
+This scopes the change to that cluster. See [condor_qedit](https://htcondor.readthedocs.io/en/latest/man-pages/condor_qedit.html). Manual holds otherwise remain exposed to the submit file's held-too-long removal rule. Inspect space usage and remove only known inactive logs/build copies or other disposable data; do not delete a slot containing unverified output. Free enough room to renew the SSH certificate, check NERSC destination writability and quota, then watch the drain complete successful passes.
 
-An already running drain retries failed transfers and picks up renewed SSH keys
-on subsequent connections. If it has exited, restart it. Once transfer and
-space conditions are healthy, release the deliberately held cluster:
+Running drain retries transfers and uses renewed keys on later connections; restart it if exited. Once space/transfers recover, release the selected cluster:
 
 ```bash
 condor_release "$OSG_CLUSTER"
 ```
 
-The live `PeriodicRemove=False` edit persists for that cluster; supervise its
-remaining holds or deliberately restore the reviewed policy. New submissions
-use the submit file. Account for every design active during the outage on
-NERSC: removed jobs can leave gaps even after the sweep reports completion.
-Restage missing events only after the corresponding prior jobs/transfers have
-stopped. Keep the original fixed event target.
+The live `PeriodicRemove=False` edit persists for that cluster; supervise its remaining holds or deliberately restore the reviewed policy. New submissions use the submit file. Account for every design active during the outage on NERSC: removed jobs can leave gaps even after the sweep reports completion. Restage missing events only after the corresponding prior jobs/transfers have stopped. Keep the original fixed event target.
 
 ## Hand back to the NERSC workflow
 
-On NERSC, load the selected campaign profile and run
-`models/campaign.py --config "$CFG" status --details`. Inspect total terminal
-events and blockers for every processed design;
-`drained.done` counts track OSG commits, while the survey also checks the terminal
-artifacts. Neither sweep completion nor drain idle exit establishes target completion.
+Activate the NERSC profile and run `python models/campaign.py --config "$CFG" status --details`. Reconcile each processed design's terminal total and blockers; sweep/drain exit alone does not establish completion.
 
-Once those designs have no remaining NERSC/OSG writers or transfers, follow
-[cache/publish and review/reap](nersc-campaign.md#3-cache-and-publish).
-Only reap designs you intend to stop generating. A later AP drain refuses
-`reaped.done`; it cannot append events to an already reaped design.
+Once those designs have no remaining NERSC/OSG writers or transfers, follow [cache/publish and review/reap](nersc-campaign.md#3-cache-and-publish). Only reap designs you intend to stop generating. A later AP drain refuses `reaped.done`; it cannot append events to an already reaped design.

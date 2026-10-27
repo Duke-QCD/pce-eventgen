@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
-"""Emulator validation + closure for the standalone inference.py PCA+GP emulator, on the primary
-(clean, no Lambda/proton) observable set. k-fold cross-validation over the designs (emulator only,
-no MCMC). Publication-styled (shares make_flow_plots.set_pub_style). Produces, in --out-dir:
+"""K-fold prediction closure for the standalone inference.py PCA+GP emulator.
+
+Validates the selected system's data-matched observable vector without MCMC.
+Figures use shared publication styling. Produces, with the system's output prefix:
 
   auau_closure_parity_z.pdf  -- standardized parity (emu vs held-out truth) + z-score calibration
   auau_closure_holdout.pdf   -- one held-out design: emulator +/-1sigma band vs the true model
   auau_pca_spectrum.pdf      -- PCA cumulative explained variance
+  auau_closure_metrics.pdf   -- per-observable accuracy and coverage
 
-Caches the k-fold arrays to <out-dir>/validation_kfold.npz; re-plot is instant. --refit recomputes.
+Caches the k-fold arrays to <out-dir>/validation_kfold.npz. Matching caches skip fold training;
+the PCA-spectrum figure still trains one full-grid emulator. --refit recomputes the folds.
 
     python emulator_validation.py                    # primary determination observable set
     python emulator_validation.py --refit --nsplits 8
+    python emulator_validation.py --system OO5360 --oo-yield-proxies --drop-specs ''
     python emulator_validation.py --system OO5360 --model-grid default --out-dir plots_validation_OO5360
 
 --model-grid emulates matrix columns directly on the MODEL centrality grid (no data matching), for a
@@ -260,9 +264,9 @@ def main(drop_specs, out_dir, nsplits, refit, holdout_pick, model_grid=None):
     fig_metrics(rows, f"{pre}_closure_metrics.pdf")
 
 
-if __name__ == "__main__":
+def cli(argv=None):
     ap = argparse.ArgumentParser(description="emulator validation + closure figures")
-    I.add_input_arguments(ap, feeddown=False, drops=False)
+    I.add_input_arguments(ap, feeddown=False, drops=False, proxies=True)
     ap.add_argument("--model-grid", default="",
                     help='"default" or species:obs[,...]: emulate matrix columns on the model grid (no data)')
     ap.add_argument("--out-dir", default="plots_validation")
@@ -271,8 +275,12 @@ if __name__ == "__main__":
     ap.add_argument("--nsplits", type=int, default=8)
     ap.add_argument("--refit", action="store_true", help="recompute the k-fold (else use cache)")
     ap.add_argument("--holdout", type=int, default=-1, help="stacked-row index for the example; -1 = median-mult design")
-    a = ap.parse_args()
+    a = ap.parse_args(argv)
     I.configure_inputs(a)
     mg = MODEL_GRID_DEFAULT[a.system] if a.model_grid == "default" else \
         [x for x in a.model_grid.split(",") if x]
-    main(I.drop_selection(a), a.out_dir, a.nsplits, a.refit, a.holdout, model_grid=mg)
+    return main(I.drop_selection(a), a.out_dir, a.nsplits, a.refit, a.holdout, model_grid=mg)
+
+
+if __name__ == "__main__":
+    cli()

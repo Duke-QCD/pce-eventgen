@@ -1,7 +1,7 @@
 # https://www.hepdata.net/record/ins3170344; version 1; MeanpT_vs_eta_OO_centdep_midrapidity_pT270MeV.yaml
 # OO sqrt(sNN)=5.36 TeV; |eta|<0.5; 0.27<pT<5 GeV; FCal centrality; value in GeV; measured fiducial mean
 # Exact tabulated central values; original centrality bin edges retained.
-# err=max(sqrt(stat^2+sys_plus^2),sqrt(stat^2+sys_minus^2)); symmetric for ALICE.
+# err=max(sqrt(stat^2+sys_plus^2),sqrt(stat^2+sys_minus^2)); asymmetric ATLAS errors are symmetrized conservatively.
 # Separate errors in uncertainties/mean_pT_charged_ATLAS.json; no bin-to-bin covariance encoded.
 # cent_low cent_high cent_mid val err
 0 1 0.5 0.7976 0.00162979451653

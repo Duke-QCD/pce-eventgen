@@ -257,6 +257,10 @@ harmonics = 2 3
         self.invoke('status', '--nprocs', '1')
         self.assertEqual(json.loads((self.root / 'survey.json').read_text())['rows'][0]['status'], 'reaped')
         self.invoke('analysis', 'run', '--submit')
+        artifact = self.root / 'analysis/design_000_AuAu200_observables.npz'
+        self.assertTrue(artifact.is_file())
+        artifact_meta = json.loads(artifact.with_suffix('.meta.json').read_text())
+        self.assertEqual(artifact_meta['observable_schema_version'], 'observables/v1')
         self.invoke('analysis', 'audit')
         self.invoke('analysis', 'aggregate')
         self.invoke('validate')

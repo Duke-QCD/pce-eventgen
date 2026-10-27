@@ -1,56 +1,48 @@
-# Local usage
+# Local installation reference
 
-For an end-to-end two-event example, start with the
-[first-run tutorial](../docs/getting-started.md). The [handbook](../docs/README.md)
-also explains the workflow, physics settings, all command flags, and recovery.
+For dependencies, environment creation, Pythia 8.309 and a complete two-event run, follow the [first-run tutorial](../docs/getting-started.md). This page covers installer options and installed files.
+
+## Dependency versions
+
+Use this baseline for the model chain, staging, caching and analysis. These are setup recommendations for this checkout, not a claim that every other version fails. Inference has its own [requirements](../inference/requirements.txt).
+
+| Dependency | Selection and reason |
+|---|---|
+| Python | 3.11 for a new environment; the standalone data downloader and OSG helpers also support 3.8+ |
+| NumPy / SciPy / h5py | New local/NERSC environments use NumPy 1.26.4, SciPy 1.14.x and h5py 3.15.x, with HDF5 1.14.x supplied by Conda. Install them together from one channel; do not mix old binary packages or user-site packages. Cython is not needed to run or build this workflow |
+| CMake | 3.16 or later, **below 4**. [CMake 4 removed support for policy versions below 3.5](https://cmake.org/cmake/help/v4.0/release/4.0.html#deprecated-and-removed-features), used by these older model build files |
+| Boost | Prefer 1.74–1.81, including filesystem, program_options and system from one installation. TRENTo builds as C++11; [Boost.Math requires C++14 from 1.82](https://www.boost.org/releases/1.82.0/). Boost 1.89 also [removed the compiled System library](https://www.boost.org/releases/1.89.0/), which TRENTo's finder requests. The Conda recipes select `boost-cpp=1.81.*` |
+| Eigen | 3.4.x. Pinned SMASH reads version macros from `Macros.h`; Eigen 5 [moved them to `Eigen/Version`](https://gitlab.com/libeigen/eigen/-/raw/5.0.0/Eigen/Version) |
+| GSL | 2.x, at least 2.0, including its CBLAS library and `gsl-config`. Select headers and libraries from the same installation |
+| Native HDF5 | Use the C++ interface from a matching GNU stack; 1.10, 1.12 or 1.14 are the setup baseline. `H5Cpp.h`, `libhdf5_cpp` and `libhdf5` must belong to that installation. HDF5 2.x is outside this baseline. h5py may use its own HDF5 installation: it runs in a separate process from TRENTo |
+| Compiler / OpenMP | GNU C/C++ with C++17 support (GCC >= 8; GCC 11–14 is the recommended starting range), with the matching OpenMP and C++ runtimes. On NERSC use `PrgEnv-gnu` and its `cc`/`CC` wrappers; use the same runtime stack for Pythia and jobs |
+| Pythia | **8.309 exactly**, required by pinned SMASH. Retain its installed library and XML data |
+| Other libraries | Use system `zstd` 1.x. SMASH already bundles YAML-CPP 0.7.0, Cuba 4.2.1 and Einhard; no separate installation is needed. ROOT, HepMC and Rivet are disabled in the workflow builds |
+
+The OSG image uses Rocky Linux 9's compiler/CMake/native-library stack and Python packages selected for its Python version. Its AP environment only needs NumPy/h5py; it does not build models. Keep the image and AP recipes in [OSG setup](../osg/README.md).
 
 ## Installation
 
-Prerequisites:
-
-- Python __3.8+__ with numpy, scipy, cython, and h5py (the guides use 3.11; the
-  separate [inference environment](../inference/README.md) requires 3.11)
-- C, C++, and Fortran compilers
-- CMake 3.16+ and a C++17 compiler for SMASH
-- Boost and HDF5 C++ libraries
-
-The [first-run guide](../docs/getting-started.md#2-choose-your-installation-path)
-provides a concrete Ubuntu/Debian dependency list, Python-environment choices,
-Pythia build steps and compiler/HDF5 selection. Keep the native dependencies
-consistent with the compiler: a conda HDF5 found on `PATH` can fail to link
-with an older system compiler. Start a fresh generated build directory after
-changing that selection so CMake does not retain the mismatched libraries.
-
-Clone with `git clone --recurse-submodules` so that the pinned SMASH submodule
-is present, and obtain the two external production datasets (MUSIC EOS and the
-iS3D two-occupancy tables) as described in
-[the first-run guide](../docs/getting-started.md#1-obtain-code-and-physics-data).
-
-The models must be installed into an active Python [virtual environment](https://docs.python.org/3/library/venv.html) (venv) or a [conda environment](https://conda.io/docs/user-guide/tasks/manage-environments.html) (for example from [Miniconda](https://conda.io/miniconda.html)).
-
-If Python and its packages are already installed on your system, the easiest choice is probably a venv:
-```bash
-python -m venv --system-site-packages --without-pip /path/to/venv
-source /path/to/venv/bin/activate
-```
-Or if using conda:
-```bash
-conda create --name pce-eventgen numpy scipy cython h5py
-conda activate pce-eventgen
-```
-
-After creating and activating the environment, run the [install](install) script.
-With no model names it builds trento, music-hydro, iS3D and SMASH, and stops with
-an error if any source tree is missing (for SMASH: run
-`git submodule update --init models/SMASH`).
-To pass a Pythia location while installing all models, use:
+From the repository root with the intended venv or conda environment active:
 
 ```bash
 ./local/install -- -DPythia_CONFIG_EXECUTABLE=/path/to/pythia8-config
 ```
 
-Pythia 8.309 must already be built or installed; the installer does not download
-or compile it automatically.
+With no model names, the installer builds TRENTo, MUSIC, iS3D and SMASH. It requires their source trees, native dependencies and approved physics data described in [setup](../docs/getting-started.md#1-obtain-code-and-physics-data). It does not download Pythia. On NERSC, `nersc/install` uses the same builder with the loaded toolchain.
+
+| Control | Purpose |
+|---|---|
+| Model names, e.g. `./local/install iS3D` | Build selected components only |
+| Arguments after `--` | Additional SMASH CMake options |
+| `HIC_BUILD_JOBS` | Limit parallel compilation |
+| `HIC_TRENTO_BUILD_DIR`, `HIC_MUSIC_BUILD_DIR`, `HIC_IS3D_BUILD_DIR`, `HIC_SMASH_BUILD_DIR` | Override the corresponding `build-workflow/` directory |
+| `HIC_EOS_PCE_DIR` | Select numbered EOS tables for MUSIC installation and runtime |
+| `HIC_MUSIC_INSTALL_PCE_DATA=OFF` | Reuse external EOS data without installing another copy |
+
+All four models build in `build-workflow/`. Dependency paths are rediscovered on each run; changed source locations, environments or toolchains trigger a CMake reset automatically.
+
+TRENTo records its HDF5 runtime library paths and checks the installed executable before installation completes. Keep the selected HDF5 installation available at runtime.
 
 ### iS3D
 
@@ -59,91 +51,26 @@ or compile it automatically.
 source "$(python -c 'import sys; print(sys.prefix)')/share/iS3D/paths.sh"
 ```
 
-Requires GSL and OpenMP. The installer builds `models/iS3D/src/cpp` in a fresh
-`build-workflow/` directory, honoring the selected C++ compiler, then installs
-`bin/iS3D`, `lib/libiS3D_lib.so`, and `share/iS3D/` data. Run from the event's
-working directory containing `surface.dat`, with a `results/` directory.
-The parameter file retains the workflow maximum of 10 samples and a target of
-10,000 hadrons. `hrg_eos=6` also requires the production two-occupancy tables,
-which are kept outside Git: copy them into
-`models/iS3D/deltaf_coefficients/vh/smash_pce_light_strange/` and check them with
-`python tools/check_physics_data.py is3d <that directory>` before installing.
-See [iS3D's workflow notes](../models/iS3D/README.md) for the environment paths,
-source layout, and documented PCE limitations.
+The CPU build installs `bin/iS3D`, `lib/libiS3D_lib.so` and `share/iS3D/`. The first-run tutorial selects the complete downloaded data tree with `HIC_IS3D_DATA_ROOT`; source its `paths.sh` when using that external selection. To install a second copy of the production coefficients in the environment instead, place them in `models/iS3D/deltaf_coefficients/vh/smash_pce_light_strange/` before building. The [iS3D guide](../models/iS3D/README.md) covers standalone sampling, data paths and supported PCE modes.
 
 ### SMASH
-
-To build only the SMASH checkout in `models/SMASH`, run from the repository root:
 
 ```bash
 ./local/install SMASH -- -DPythia_CONFIG_EXECUTABLE=/path/to/pythia8-config
 ```
 
-`models/SMASH` is a Git submodule pinned to unmodified upstream SMASH commit
-`0985d6b32fb801404c933d70c86c23759d60ff1f` (`SMASH-3.0-1-g0985d6b3`, one commit
-after the 3.0 tag). It requires GSL >= 2.0, Eigen3 >= 3.0, and Pythia **8.309**.
-The installer refuses any other revision before building.
+The installer requires the pinned SMASH submodule and Pythia 8.309. Selection precedence is an explicit `-DPythia_CONFIG_EXECUTABLE` or `-DPYTHIA_ROOT_DIR` after `--`, then `PYTHIA_CONFIG`, then `PYTHIA_ROOT_DIR`/`PYTHIA8`, then `models/SMASH/build-deps/pythia8309` if present. A selected installation is reused; the installer does not copy or rebuild Pythia. ROOT/HepMC/Rivet output and upstream tests are disabled for this build.
 
-SMASH uses its upstream particle and decay tables, which include sigma. Keep
-those tables together: commenting out sigma in SMASH's particle table while
-retaining its decay channels prevents startup, and the installer rejects that
-mismatch. Sigma is excluded separately at particlization by iS3D's
-`pdg_smash_pce.dat` and chosen particle list, so it is never sampled from the
-surface but its transport and decay channels remain. Particle data are compiled
-into SMASH, so editing a text table beside an existing binary changes nothing.
-
-The installer uses `models/SMASH/build-workflow`. Set `HIC_SMASH_BUILD_DIR` for another build location and
-`HIC_BUILD_JOBS` to limit parallel compilation. Extra arguments after `--` are
-SMASH CMake options. Optional ROOT/HepMC/Rivet output and upstream unit tests
-are disabled by default for the OSCAR workflow.
-
-If Pythia 8.309 was built in `models/SMASH/build-deps/pythia8309`, it is found
-automatically; an explicit CMake option after `--` overrides that location.
-Release archives are available from the [official Pythia release repository](https://gitlab.com/Pythia8/releases/-/tags/pythia8309).
-
-The executable installs to the active environment's `bin/smash`; SMASH's shared
-library and input files install to `lib/` and `share/smash/`. Runtime library
-paths retain linked dependencies, including the external Pythia installation.
-Keep Pythia's library and XML data directory available after installation.
-
-For the workflow, set `HIC_SMASH_EXEC` to that executable and
-`HIC_SMASH_CONFIG` to the repository's `config/config.yaml`. The configuration
-is separate from upstream example configurations and is not overwritten by the
-installer. NERSC setup selects `$HIC_SOFTWARE_ROOT/bin/smash`.
-An explicitly supplied `HIC_SMASH_EXEC` is preserved.
+SMASH installs to `bin/smash`, `lib/` and `share/smash/`, retaining runtime links to Pythia. Keep Pythia's library and XML data available. Its particle/decay tables are compiled in and must agree; [the physics reference](../docs/reference/physics.md#smash-configuration-and-particles) explains sigma handling. The workflow uses the separate `config/config.yaml`, which installation does not overwrite.
 
 ## Before running events
 
-Activate the installed environment and use `run-events-wrapper`. It selects the
-matching runner and iS3D data without changing the event working directory:
+Activate the environment, select approved data and archives, then pass the initialized run directory to the wrapper:
 
 ```bash
 run-events-wrapper --mode both --nevents 10000 /absolute/path/to/design/system
 ```
 
-The run directory must already contain `parameters.dat`, `music_input`, and
-`initial.hdf` from initialization. Afterburner-only mode instead uses existing
-per-event hydro markers and surfaces. TRENTO runs in initialization, not inside
-`run-events`.
+The target must already contain its matching `parameters.dat`, `music_input` and `initial.hdf`. Afterburner-only work uses existing hydro markers and surfaces. See [modes and resuming](../docs/workflow.md#modes-and-resuming) before retrying interrupted events.
 
-MUSIC now installs to `bin/MUSIChydro` and `lib/libmusic.so`, with a relative
-runtime library path. Its numbered PCE dataset installs under
-`share/music-hydro/EOS/PCE/strange_30_10000`. `HIC_EOS_PCE_DIR` selects the
-directory containing `0.dat` through `29.dat` directly. Verify external
-data with `python tools/check_physics_data.py eos /path/to/dataset`. New EOS binaries
-are outside ordinary Git, with a small tracked checksum manifest. Set
-`HIC_MUSIC_INSTALL_PCE_DATA=OFF` to reuse external data without an installed copy.
-Like iS3D, it uses a separate `build-workflow/`; set
-`HIC_MUSIC_BUILD_DIR` to choose another build directory. The installer also
-packages the OSCAR converter and shared SMASH configuration under
-`share/pce-eventgen/`, so an installed runner can use those without a checkout.
-The converter's source is `models/iS3D/iS3D_OSCAR.py`; its installed copy is
-`share/pce-eventgen/models/iS3D/iS3D_OSCAR.py`.
-Set `HIC_MUSIC_EXEC`, `HIC_IS3D_EXEC`, `HIC_SMASH_EXEC`, `HIC_SMASH_CONFIG`, or
-`HIC_IS3D_OSCAR_SCRIPT` when selecting another installation or configuration.
-
-Use `HIC_SURFACE_ARCHIVE_ROOT` to select the surface archive destination;
-otherwise `surface_archive/` is created under the launch directory. `zstd` is
-required for archiving completed events. See the repository's event-runner
-notes for modes and rerun behavior. The wrapper can also be invoked directly
-as `./models/run-events-wrapper` while the environment is active.
+MUSIC installs `bin/MUSIChydro`, `lib/libmusic.so` and, unless disabled, `share/music-hydro/EOS/PCE/strange_30_10000`. Shared conversion/configuration files install under `share/pce-eventgen/`, allowing the installed runner to work without a checkout. The [environment reference](../docs/reference/environment.md) lists executable/data overrides; the [archive reference](../docs/reference/files.md#surface-archive) explains the destination and path layout. The wrapper can also run directly as `./models/run-events-wrapper` with the environment active.

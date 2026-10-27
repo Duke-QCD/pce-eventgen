@@ -256,6 +256,8 @@ class LauncherTests(unittest.TestCase):
             launcher = root / 'pce-eventgen'
             launcher.write_text(configure_user.fill('pce-eventgen', {
                 'ACCOUNT': 'fixture', 'SLURM_OUTPUT': root / 'out', 'SLURM_ERROR': root / 'err',
+                'QOS': 'debug', 'SUBMIT_TIME': '00:10:00',
+                'LAUNCHER_TASKS': 1, 'LAUNCHER_CPUS': 1,
                 'PATHS_FILE': root / 'unused.sh'}, quote=True))
             site = root / 'site.sh'
             site.write_text('export HIC_SURFACE_ARCHIVE_ROOT=/site/default\n'

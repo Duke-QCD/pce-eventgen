@@ -85,7 +85,7 @@ class WorkflowNameTests(unittest.TestCase):
         sys.path.insert(0, str(ROOT / 'models/analysis'))
         self.addCleanup(sys.path.remove, str(ROOT / 'models/analysis'))
         canonical = importlib.import_module('extract_observables')
-        self.assertEqual(canonical.OBSERVABLE_SCHEMA, 'stage_a/v1')
+        self.assertEqual(canonical.OBSERVABLE_SCHEMA, 'observables/v1')
         for name in ('extract_observables.py', 'reduce_observables.py'):
             result = subprocess.run([sys.executable, str(ROOT / 'models/analysis' / name),
                                      '--help'], cwd=self.root, env=self.env,

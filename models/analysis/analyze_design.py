@@ -2,8 +2,7 @@
 """
 analyze_design.py -- single entry point for per-design observable analysis.
 
-Thin wrapper over the tested extract_observables / reduce_observables modules (which remain the
-implementation and are not modified). Subcommands:
+Thin wrapper over extract_observables / reduce_observables. Subcommands:
 
   run       Extract one design's artifact, optionally validate it and/or reduce it to JSON.
             This is the per-design unit the campaign launcher calls. Resumable: skips a design
@@ -11,10 +10,9 @@ implementation and are not modified). Subcommands:
   validate  Round-trip validate an existing artifact against its cache (the acceptance gate).
   reduce    Reduce an existing artifact to an observables JSON.
 
-Paths resolve from --cache-root/<design>/<system> and --out-dir/<design>_<system>_stageA,
+Paths resolve from --cache-root/<design>/<system> and --out-dir/<design>_<system>_observables,
 so the common case is just `--cache-root R --design design_XXX --out-dir O`. The analysis is
-read-only and applies no cuts of its own -- all acceptances are baked into the cache and are
-verified against this code's constants by the extractor's fingerprint gate.
+read-only. The selected analysis profile defines how retained cache statistics become observables.
 """
 
 import argparse
@@ -37,7 +35,7 @@ def _cache_dir(cache_root, design, system):
 
 
 def _prefix(out_dir, design, system):
-    return os.path.join(out_dir, f"{design}_{system}_stageA")
+    return os.path.join(out_dir, f"{design}_{system}_observables")
 
 
 def _resolve_design_system(a):
@@ -69,15 +67,16 @@ def cmd_run(a):
     # artifact re-extract (and overwrite) instead of being silently skipped.
     done = os.path.exists(prefix + ".npz") and os.path.exists(prefix + ".meta.json")
     if done and not a.force:
-        sx.validate_artifact_scope(prefix, expected)
+        existing_meta = sx.validate_artifact_scope(prefix, expected)
+        sx.assert_analysis_profile(existing_meta, a.analysis_profile, prefix)
         print(f"[analyze_design] {design}/{system}: artifact exists, skipping extraction (use --force to redo)")
     else:
         out, meta = sx.extract_design(cache_dir, et_eta_window=a.et_eta_window,
                                       require_verified=not a.allow_unverified, zstd=a.zstd,
-                                      expected_fingerprint=expected)
+                                      expected_fingerprint=expected, profile=a.analysis_profile)
         sx.write_artifact(out, meta, prefix)
         print(f"[analyze_design] {design}/{system}: {meta['n_events']} events "
-              f"({meta['n_zero_events']} zero) -> {prefix}.npz")
+              f"({meta['n_zero_events']} zero); profile={sx.analysis_profile(meta)} -> {prefix}.npz")
 
     if a.validate:
         ok = sr.validate_against_cache(prefix, cache_dir, zstd=a.zstd)
@@ -99,7 +98,8 @@ def cmd_validate(a):
     prefix = a.artifact or _prefix(a.out_dir, design, system)
     expected = sx.load_expected_fingerprint(a.expected_fingerprint)
     sx.validate_cache_scope(cache_dir, expected, a.zstd)
-    sx.validate_artifact_scope(prefix, expected)
+    meta = sx.validate_artifact_scope(prefix, expected)
+    sx.assert_analysis_profile(meta, a.analysis_profile, prefix)
     ok = sr.validate_against_cache(prefix, cache_dir, zstd=a.zstd)
     return 0 if ok else 1
 
@@ -111,7 +111,8 @@ def cmd_reduce(a):
         if not (a.out_dir and a.design):
             sys.exit("error: reduce needs --artifact, or --out-dir and --design")
         prefix = _prefix(a.out_dir, a.design, a.system)
-    sx.validate_artifact_scope(prefix, sx.load_expected_fingerprint(a.expected_fingerprint))
+    artifact_meta = sx.validate_artifact_scope(prefix, sx.load_expected_fingerprint(a.expected_fingerprint))
+    sx.assert_analysis_profile(artifact_meta, a.analysis_profile, prefix)
     out, meta = sr.load_artifact(prefix)
     edges = a.bin_edges
     res = sr.reduce_all(out, meta, estimator=a.estimator,
@@ -163,7 +164,7 @@ def _add_reduce_opts(p):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="per-design analysis per-design analysis (single entry point).")
+    ap = argparse.ArgumentParser(description="Per-design observable analysis (single entry point).")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     rp = sub.add_parser("run", help="Extract one design (+ optional validate / reduce).")
@@ -190,6 +191,7 @@ def main():
     dp.set_defaults(func=cmd_reduce)
 
     for parser in (rp, vp, dp):
+        sx.add_analysis_profile_argument(parser)
         parser.add_argument("--expected-fingerprint",
                             default=os.environ.get("HIC_EXPECTED_FINGERPRINT_V3"),
                             help="Selected scope; defaults to HIC_EXPECTED_FINGERPRINT_V3.")

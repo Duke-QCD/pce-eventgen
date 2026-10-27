@@ -6,7 +6,7 @@ import inference as I
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    I.add_input_arguments(parser)
+    I.add_input_arguments(parser, proxies=True)
     args = parser.parse_args(argv)
     I.configure_inputs(args)
     feeddown = I.feeddown_selection(args)

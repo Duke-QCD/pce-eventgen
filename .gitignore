@@ -11,6 +11,28 @@ __pycache__/
 # Local recovery snapshots.
 /.recovery/
 
+# Manuscript drafts and their exported source bundles remain local.
+/multisystem-calibration-paper/
+/multisystem-calibration-paper-*
+
+# Personal scratch space, assistant settings and credentials.
+/personal/
+/private/
+/scratch/
+/.agents/
+/.codex/
+/.aws/
+/.ssh/
+.netrc
+.pypirc
+.env
+.env.*
+!.env.example
+
+# Downloaded physics inputs and prepared release archives.
+/physics-data/
+/dist/
+
 # Externally managed production physics data. Checked-in manifests record their
 # checksums; verify a copy with tools/check_physics_data.py.
 /models/music-hydro/EOS/PCE/*
@@ -45,8 +67,11 @@ __pycache__/
 /models/analysis/osg_vs_nersc.png
 /osg/manifest*.txt
 
-# Generated personal NERSC configuration (paths/account specific to each user).
+# Personal profiles and campaign notes stay local for every user.
 /config/users/
+
+# Generated MUSIC job script contains local scheduler/account/path selections.
+/models/music-hydro/utilities/submit_full_job.pbs
 
 # Rebuildable iS3D documentation intermediates; keep TeX sources and reference PDFs.
 /models/iS3D/documentation/**/*.aux

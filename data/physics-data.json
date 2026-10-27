@@ -1,0 +1,895 @@
+{
+  "version": "physics-data",
+  "archive": "pce-eventgen-physics-data.tar.gz",
+  "url": "https://github.com/Duke-QCD/pce-eventgen/releases/download/physics-data/pce-eventgen-physics-data.tar.gz",
+  "bytes": 389836002,
+  "sha256": "06ffd62ee6fc8ef2beac7a21140a7a330ab124eaf9318b8706be90ba9c1af775",
+  "unpacked_bytes": 1199512547,
+  "files": [
+    {
+      "name": "ATTRIBUTION.md",
+      "bytes": 1467,
+      "sha256": "0ec359d6e846a358f84ca56bf157f8735b647c3361686b2999c2ed0ab2e30a36"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/0.dat",
+      "bytes": 12000000,
+      "sha256": "a1d7df32694a173dc97c2afd1c0312d687384f7cacd69b01b30ad68e8f207a67"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/1.dat",
+      "bytes": 12000000,
+      "sha256": "b8277dacbc72f1a3feeecd6fd7e026a672af2199ac2cede283c0a4617110ee39"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/10.dat",
+      "bytes": 12000000,
+      "sha256": "65469941dd8e877ee77c7f66fe77ece165da3ee0d882b26d1b27f4f158fa6c0e"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/11.dat",
+      "bytes": 12000000,
+      "sha256": "79234c3d45087b26a644de3f9de403bab4b239e79463c5ad3774a4576b74d608"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/12.dat",
+      "bytes": 12000000,
+      "sha256": "7200c0cf48dc3e7b39616e722c80014655657071414a041f4cedb163a41a7a83"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/13.dat",
+      "bytes": 12000000,
+      "sha256": "2731d4e092bbb4249c81531bf70cb95f51993d5960b8323ab77b421f5d109bb8"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/14.dat",
+      "bytes": 12000000,
+      "sha256": "9ab94264f9302ce9a7d65af2de6588a07d074ab6e00e2a384180a8b47b935cfd"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/15.dat",
+      "bytes": 12000000,
+      "sha256": "15b7f56ef2ccc428ecbd146cb9bcab35ab30c01720b741663d428c8126e071f2"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/16.dat",
+      "bytes": 12000000,
+      "sha256": "e8610d6e883e3a4c71fd1a72aee5b6a0d7a426ee7d102cda01840dd51a80740f"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/17.dat",
+      "bytes": 12000000,
+      "sha256": "c55b3004d5f0def6c23e8b38a126e3d5a065b038f135f9e572956112fd8b188a"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/18.dat",
+      "bytes": 12000000,
+      "sha256": "36ce907687192853e4f241c78137c6a2b2f5098c6b07db3caf68846eab581dfd"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/19.dat",
+      "bytes": 12000000,
+      "sha256": "ae81411ad8e6c77355e8b6a948aa4b855bad206baa89c85316ccc0f0523edc8c"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/2.dat",
+      "bytes": 12000000,
+      "sha256": "4af52c796c911044c5d008fb5562c026334baff4141329fdc43e64531ce2725f"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/20.dat",
+      "bytes": 12000000,
+      "sha256": "efdcb0130fcc64011adf911235cb1e9c5beeeb039c4d463850471a98dbed2665"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/21.dat",
+      "bytes": 12000000,
+      "sha256": "3658059d466c8d13d1926e6be011a8ae1a8499a6927bfdb3b441a105a68fadfe"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/22.dat",
+      "bytes": 12000000,
+      "sha256": "32c38135683013a56b79dc2a7ac6b988c668a4e29b94dc3bc15242f178d3748c"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/23.dat",
+      "bytes": 12000000,
+      "sha256": "c65fec3983209295a9bd83358106e603c76aeb495638ae460819517a82d02b51"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/24.dat",
+      "bytes": 12000000,
+      "sha256": "df4f3e0da05666fac0a09f1f49ec124246705423aae1850809fbfb35f8feb963"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/25.dat",
+      "bytes": 12000000,
+      "sha256": "a4436eb5a5e1e55f1615cb27fe79d55954f5f2714ea5b247ce775dfe26437f8d"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/26.dat",
+      "bytes": 12000000,
+      "sha256": "f34bebb5928c73ce62030204f44cd64682059783ffe43fcc993388ca540a3a14"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/27.dat",
+      "bytes": 12000000,
+      "sha256": "2348647fa16b4a17826abc20a12d754a6f70cd92dd8221ef641563e099373a4b"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/28.dat",
+      "bytes": 12000000,
+      "sha256": "561e572225ce0e62c001388e11833f2abe70d3c1b77a8ec88dd16e186026fe7c"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/29.dat",
+      "bytes": 12000000,
+      "sha256": "f16db6ae2a9131922d1e4b9b2e5938bd3b2bf59c3a4162349a0badb9b154b224"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/3.dat",
+      "bytes": 12000000,
+      "sha256": "dd24203bee1e4cf85d509a8fc6576f7504256d3e94752738331750872267cedb"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/4.dat",
+      "bytes": 12000000,
+      "sha256": "e47239c26cbf8e6c4b2edeaf9f750b8429d3aae7effbb526a2d759a3f88cc058"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/5.dat",
+      "bytes": 12000000,
+      "sha256": "b132185fb1f718f923411b8593ef18cf52bd519c5ff5ee71217d077a2e405a5c"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/6.dat",
+      "bytes": 12000000,
+      "sha256": "16187049a42032ae7db5c8bff656215edf5cf6a49e8ed7d763396b201a19d525"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/7.dat",
+      "bytes": 12000000,
+      "sha256": "40bf338646b03c258a3356b53f3e19f44885513ae55db5110312debffbe9df1e"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/8.dat",
+      "bytes": 12000000,
+      "sha256": "c7c412ee1fc19f1f5eb8e7c67e3fe4135e60157412bc9a0404567815f579b95f"
+    },
+    {
+      "name": "EOS/PCE/strange_30_10000/9.dat",
+      "bytes": 12000000,
+      "sha256": "c4f6f7659b7be46d71f94aaf80cb175ac629127194bbe8dadf8b116f47c772d0"
+    },
+    {
+      "name": "README.md",
+      "bytes": 1098,
+      "sha256": "67eb298e5b651ff70733dec8239ea079957b0c785fc0b8465fa625ca0ba29be2"
+    },
+    {
+      "name": "iS3D/PDG/baryon_dict.dat",
+      "bytes": 2296,
+      "sha256": "74c8390b5260b383b42bab6f599ec2f922b1bd6bddf303af5c0012d2b5cc541e"
+    },
+    {
+      "name": "iS3D/PDG/charge_dict.dat",
+      "bytes": 2328,
+      "sha256": "5b110681e5f6fb1cc77ffc0fcd8c90fbe9668cfe05d3a7b1bd3e5428a60d85e8"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles.dat",
+      "bytes": 2574,
+      "sha256": "d0cc38ecc7455aba709c06a66cfa46617094e2886f397f022ade24d16042b91f"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_PCE.dat",
+      "bytes": 18,
+      "sha256": "6386e7c84c4f4e6553368aaaf74b4416795ad814cfbb353bbc9fba3302cef370"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_box.dat",
+      "bytes": 2574,
+      "sha256": "d0cc38ecc7455aba709c06a66cfa46617094e2886f397f022ade24d16042b91f"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_common_to_smash_urqmd.dat",
+      "bytes": 1514,
+      "sha256": "6f1e2bb5149e973c4e131c82fdd34c671b9449985a251fd4a9b5bfd4bd4dcc44"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_pikp.dat",
+      "bytes": 16,
+      "sha256": "0f90d78f140abfed019d7ba5fc811109e567900a7f67b6a5ba8dd858f254b0cd"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_smash.dat",
+      "bytes": 2759,
+      "sha256": "b3db55f91bffd964782e93408e999e4d0707aa4cf2a01219c5ad869bb6a2b71b"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_urqmd_Bernhard.dat",
+      "bytes": 1778,
+      "sha256": "bf4e38cf846b9108496064e7dcf755a14de7c735e3fa8ea77899597d7eda4c2d"
+    },
+    {
+      "name": "iS3D/PDG/chosen_particles_urqmd_v3.3+.dat",
+      "bytes": 1978,
+      "sha256": "665cc0e2cdc4943164568a149a8bb59b490addbe07cb43a45b2dced839f464ad"
+    },
+    {
+      "name": "iS3D/PDG/pdg-App.dat",
+      "bytes": 25920,
+      "sha256": "f8b1b847ab53bdabfc2d0d9d619502275938664bddc41c4275b4cc4778fa3c91"
+    },
+    {
+      "name": "iS3D/PDG/pdg-urqmd_v3.3+.dat",
+      "bytes": 97079,
+      "sha256": "89c700aa8c35258ea1cd7e7f69a37ca8471d10a2017dd821867952c12b15c397"
+    },
+    {
+      "name": "iS3D/PDG/pdg-urqmd_v3.3+_withDecayPhotons.dat",
+      "bytes": 102584,
+      "sha256": "13be96c2aeea15b6b5ba37d1c532162db27b4bc1e32ba20592b98b4f5e79b209"
+    },
+    {
+      "name": "iS3D/PDG/pdg.dat",
+      "bytes": 237143,
+      "sha256": "a4e6804c34d04be770485efa929781f5cd802b188240fb3b7cdc59f40e6b5761"
+    },
+    {
+      "name": "iS3D/PDG/pdg_box.dat",
+      "bytes": 6594,
+      "sha256": "ffaa203fe6773be43836b47451d7a7d6371600a6fc323dfe86f7b191c76290e2"
+    },
+    {
+      "name": "iS3D/PDG/pdg_smash.dat",
+      "bytes": 237143,
+      "sha256": "a4e6804c34d04be770485efa929781f5cd802b188240fb3b7cdc59f40e6b5761"
+    },
+    {
+      "name": "iS3D/PDG/pdg_smash_pce.dat",
+      "bytes": 6521,
+      "sha256": "63300e0dd025c0c0b7966f52f48f1664da7ebac4aed8725375b492b3dc23439b"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vah/c0_vah1.dat",
+      "bytes": 432258,
+      "sha256": "4d1de5bda000fdae914195f01153a06954043c63d7c58ea2fa29371fc0d5a618"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vah/c1_vah1.dat",
+      "bytes": 432259,
+      "sha256": "0ebf08fe900758f87c68b009fd0656d500cc5a732998726cb1a6c929ec3174ba"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vah/c2_vah1.dat",
+      "bytes": 417713,
+      "sha256": "0f76a00df76aab34af89039c2aee302bdb920431d8b795f3684958dccfdcb763"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vah/c3_vah1.dat",
+      "bytes": 433619,
+      "sha256": "61b5109ab2a4d15667e8ece0a822342196c572125d77a41d8a1aa384a791cf8c"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vah/c4_vah1.dat",
+      "bytes": 417750,
+      "sha256": "663b225dea0db3c688f1539cf049bec8b4e547590504b2fb39e40654e0e4b5c7"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/F.dat",
+      "bytes": 609085,
+      "sha256": "d72bb4ea339c0078eaa53beb85d2294f7eaa4b4449f4b7c7188d28016013ef57"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/G.dat",
+      "bytes": 588767,
+      "sha256": "1c947cdc3c11669a68e4b0ab85d9b8395798d2fe5c2c9f7a23ceb98d4e8722d1"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/betaV.dat",
+      "bytes": 591837,
+      "sha256": "27f720b3a59c5a6fb2abf42f0ae19be78970bea41a10d897486c53ad8a440819"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/betabulk.dat",
+      "bytes": 603293,
+      "sha256": "57c3e624d5a8df11bd99b47ab04ad97ab27064568ce8bf809662934e7837262b"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/betapi.dat",
+      "bytes": 611475,
+      "sha256": "f17d627213c6381d35e295dd2da3fca9857aa98b9733cc71867041b2087f0ee2"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/c0.dat",
+      "bytes": 609232,
+      "sha256": "a388e7f36ea869341bd27fa88171c812b78f056615f6ffdac543a1f6094dbb2c"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/c1.dat",
+      "bytes": 588788,
+      "sha256": "3744865c9a4e6648ad66f5bf123833e0fac5cf26c3a7b11b5d5de80104fcd2d3"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/c2.dat",
+      "bytes": 609089,
+      "sha256": "8b7b6825b73f947cb1a7c5010d3a347562c3d392b0b5364359a5ec6f5aefe29e"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/c3.dat",
+      "bytes": 610792,
+      "sha256": "9b9466e0a5b803c6ff91c8e58df64307fb60c8d85fdbe7f25d9070ee06966950"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash/c4.dat",
+      "bytes": 588788,
+      "sha256": "5707508ac107f8bd1495407ba8f493e1c2dd41271803b0eba35250802921a811"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/F.dat",
+      "bytes": 245480,
+      "sha256": "0d0747059c6b09404d2b34ee343ee0516098ace76e8abe3fa4397d32b85e06ea"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/G.dat",
+      "bytes": 237282,
+      "sha256": "095b508e181ed3375f3a2093adfa518309bade68e3c1b0816333759db6b0ac1c"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/betaV.dat",
+      "bytes": 237964,
+      "sha256": "5669f7a15d17ad1b307c99dbd6ac3c941a91e9fcca90044797c7f5ea506cec66"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/betabulk.dat",
+      "bytes": 247994,
+      "sha256": "9cc15ea91a04fe7e7565a2f2493baae50c6114fafde543b05f4c719c0319196c"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/betapi.dat",
+      "bytes": 251160,
+      "sha256": "5b16565ac11126b4c44b9f0e9c653af69405f7cae0a17d1fc8fa8ca9deffe3f6"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/c0.dat",
+      "bytes": 245484,
+      "sha256": "21a48dc39d9452bc98691e875a19c8b84ada1cb2e23a6536e09d9dc9338ddfcb"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/c1.dat",
+      "bytes": 237303,
+      "sha256": "cd260387726dd69fd58f2c9c73d064cc2b79caf5175ccdecc3f003dbd7b28e95"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/c2.dat",
+      "bytes": 245484,
+      "sha256": "e16d50c8fe5845d22e09d9a20a0fdde9ddf60e132e0429f7f1c612f8badd60d6"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/c3.dat",
+      "bytes": 245482,
+      "sha256": "537c7ea5f0786d51ac9f5c1b869a93f74a383dec8e0cb58c0892c901822a84fa"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_box/c4.dat",
+      "bytes": 237303,
+      "sha256": "2904f2695759d3f6b35b0d2e9a390c2e47f002ff1bb376bb27354ae5ca2e635b"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/F.dat",
+      "bytes": 488480,
+      "sha256": "4b6d59619bd1b20add85ea873a3f97e00b2d1a9b4aa4339972cbf03dd031c956"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/G.dat",
+      "bytes": 472182,
+      "sha256": "477ffada63936cd71b30c186ef70870cf297ca63cc856f402fb637d93f44813e"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/betaV.dat",
+      "bytes": 481136,
+      "sha256": "8a8670f01f532598c07c278ddc05679b2deb298e798298e305376cd2b08ebb3e"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/betabulk.dat",
+      "bytes": 498819,
+      "sha256": "c9381803e726433cfbe3c8bb88c96cf6bbe917a71e6a91569369b3745bc1fbf0"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/betapi.dat",
+      "bytes": 505729,
+      "sha256": "52255feaecae82e24c011ccc0fa0c36d71ba5dc56ad27f65f08296b42a90cef0"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/c0.dat",
+      "bytes": 488484,
+      "sha256": "94567e63641a0b3c8cb329b9539ba139115db10e8fecf60226d0785748bd5ab6"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/c1.dat",
+      "bytes": 472203,
+      "sha256": "5c454247bd892b5c68887beab1dc0e25e5710a35a1db86017a86945aea91d208"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/c2.dat",
+      "bytes": 488484,
+      "sha256": "381f4a9b68911c12731acbeb6a6f072619e3c642662b24cb240a56821d0282fb"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/c3.dat",
+      "bytes": 488482,
+      "sha256": "f9688e2a36255b039014a45a0e8c4545e65654d9e047dddabdb6e42511cd1ea9"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_equilibrium/c4.dat",
+      "bytes": 472203,
+      "sha256": "d44628a0ff338a9d98bb03db7e08ec7c3c27d227fba705ad51638398b2161647"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/F.dat",
+      "bytes": 609079,
+      "sha256": "f816890d19d344b4004c4106dd390398adaafd9826137934c0e8039f6b9c5117"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/G.dat",
+      "bytes": 588761,
+      "sha256": "5673ebfe318cebeb37e228b4069b2cef49addf8848f9258d057a96e2e25f6c19"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/betaV.dat",
+      "bytes": 591845,
+      "sha256": "dc68edf89577c26c3a601da522679f1254d660ee1334b3602769c0cbe2bca0cb"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/betabulk.dat",
+      "bytes": 603243,
+      "sha256": "940f3549038040ef541ab47f828a504c61c48befa863540adabe95a7fae99793"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/betapi.dat",
+      "bytes": 611456,
+      "sha256": "53997f9b5a3ea9dc9d45d0ce39dd8af2385b47587a9279d2695eaf46b8b7327f"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/c0.dat",
+      "bytes": 609226,
+      "sha256": "4b0d8547aae3d17b4cc9fc04cbfa20b7a1e54de270700c6d7a1f3243a964ac3d"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/c1.dat",
+      "bytes": 588782,
+      "sha256": "2b14154e3ca5b467c7ac1f3ad4bc7281741570b1235b7162ce41d9c87a53e730"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/c2.dat",
+      "bytes": 609083,
+      "sha256": "961b4cc66c320e28f04829db994623052d65dfe4d75f4e9d638e5767d7675b79"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/c3.dat",
+      "bytes": 610792,
+      "sha256": "0950d9e5a3ddc2aa40da8946314d792b0245525a9d0ece4f52dc1a6c7a9be655"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light/c4.dat",
+      "bytes": 588782,
+      "sha256": "789001f2b59ae453c3299e5be5649eac1e6f3a9e889fe2ff679d50c800c3aabc"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/F.dat",
+      "bytes": 82016098,
+      "sha256": "c6679659e61ef3c23bbd3ccbb1448e5099273f6875bba462eccecda9fe96b9e0"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/G.dat",
+      "bytes": 79965680,
+      "sha256": "13a0a76296b3533b58130bd49b7bd726bf79263f8ac2a13d7aacd29bdcbbf211"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/betaV.dat",
+      "bytes": 80250843,
+      "sha256": "3af3b7b92c2de06d951f835fd03db595249c924025b5dfba8f436f8e53107709"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/betabulk.dat",
+      "bytes": 81446358,
+      "sha256": "c083c77e15b67d1f9d6b776e17181b4303319f6f8d4645747b33ccadade3c94e"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/betapi.dat",
+      "bytes": 82321475,
+      "sha256": "76b2da07dc8ba9b5de5ff1738090616ec073eb326d9d0186fdcbad1fccfbe70e"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/c0.dat",
+      "bytes": 82021175,
+      "sha256": "34ef16f62460791c73d6bbf6ba33356e87f5dc58acf71765c98114d827c869bf"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/c1.dat",
+      "bytes": 79965701,
+      "sha256": "d6bff35cb3252d3e564ea246e2e48270547bd60a3c7cccb700706479127d33a7"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/c2.dat",
+      "bytes": 82016102,
+      "sha256": "8fbfb726cf9f6c3d51cd7c11a5c1755584dac3cb90e67847a73c30942801584f"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/c3.dat",
+      "bytes": 82152624,
+      "sha256": "16827c0f9ee9901412a890f50ead338b17654d0d868e7c309f7521d75b94880f"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/smash_pce_light_strange/c4.dat",
+      "bytes": 79965701,
+      "sha256": "29a3748b6e04e2b3beac8c87b147c3ccb054814951bb16cb2d2af4d14d69214d"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/F.dat",
+      "bytes": 245480,
+      "sha256": "49b1892716a235ce5b2e687585fd4c053ebf19b1ec8ac3f50a8ba02b86c2a868"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/G.dat",
+      "bytes": 237282,
+      "sha256": "8ae75026ca4cab6eb51a2e1e27c3d0db6474d811e34f53303855c91ddd187631"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/betaV.dat",
+      "bytes": 237861,
+      "sha256": "663c00c170503a53cacb5cfdf5f9c14e908a39c1fe4db889fd8d71b5e1e4398a"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/betabulk.dat",
+      "bytes": 247880,
+      "sha256": "4e872807e5560726fa347e2b8e9f294d32dca083f4e1483bf872bed923384e09"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/betapi.dat",
+      "bytes": 251097,
+      "sha256": "ecf7e3635d75781837062b1301b0bd96eb535990dc26382c098d048ecc20f6f1"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/c0.dat",
+      "bytes": 245484,
+      "sha256": "b4b6eda9efb88e8e6f8fa7446ff990b210f25a7cd2d6d4342e6e882e3fce12a5"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/c1.dat",
+      "bytes": 237303,
+      "sha256": "15c55d15b8d226aa2a96f63ce7a869fdf61d840e0c9a87967984deeb1131e989"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/c2.dat",
+      "bytes": 245484,
+      "sha256": "e5daa7db50ea5d190d7fcbbfbbdd8c5a05d2c3dd987453cc4bb103d8d2aa6af4"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/c3.dat",
+      "bytes": 245482,
+      "sha256": "b466b11bed5a0f4970de4d8154ce1be730d07c3472150188ea480baecc89e424"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh/urqmd/c4.dat",
+      "bytes": 237303,
+      "sha256": "277b2a2efcc9d0b987da092a7809ba8f81eae89a76aeb7a38449e101be6fe15d"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/F.dat",
+      "bytes": 228770,
+      "sha256": "8033c1907b0a0f83c3000b5a7a5ca3dbb35f7494c4cf988aa3d5d412796dc47a"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/G.dat",
+      "bytes": 221177,
+      "sha256": "62da1c39e3ea86475a764458617ecb6cb73291ad5184ebc46fb168d8c9d37050"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/betaV.dat",
+      "bytes": 221574,
+      "sha256": "92dfba66d0d40d514aed2e67bdfcb4374719743af6232a760d235a0acca23568"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/betabulk.dat",
+      "bytes": 230614,
+      "sha256": "786f612f6fa818829dd4f189b40e110bc08b7ad807865a3eadbcd675a8ff0794"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/betapi.dat",
+      "bytes": 233611,
+      "sha256": "a40bc069f95bfef37fbced7585eca5547d1d5d9c48224688d807640f04d1c1df"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/c0.dat",
+      "bytes": 245484,
+      "sha256": "cc6c7dab41e15dd6ea7bb326c67bab4abbd4e76d27db316ded742fcec0a4e0e7"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/c1.dat",
+      "bytes": 237363,
+      "sha256": "3194f32d50cdd98131537319774903ed0ad1e4852f29dd38bae7f98839a8bce2"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/c2.dat",
+      "bytes": 245484,
+      "sha256": "c81b0531a84f86b275a7008c38f37a918a4d6660ad0ae2f07e7c73263cc92e01"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/c3.dat",
+      "bytes": 245482,
+      "sha256": "bb81051e62a9423f6b4c6d60251c477e70a0fbb9a4d90ed60abd37a1b1d9852a"
+    },
+    {
+      "name": "iS3D/deltaf_coefficients/vh_reference/c4.dat",
+      "bytes": 237354,
+      "sha256": "21bd8a0b77f2dd758216ced28b898f52760a362f84ffed0739ffe0a3d88c75d7"
+    },
+    {
+      "name": "iS3D/iS3D_parameters.dat",
+      "bytes": 5521,
+      "sha256": "bd3c1c4f810ea56ec3db2820fbb9dbd936be5139ce6bf4ad55223e5bfe8d8fd3"
+    },
+    {
+      "name": "iS3D/paths.sh",
+      "bytes": 980,
+      "sha256": "1b97df71d76d9222e4ac7cec2878f91e258410a5281d32e79cb1a7d1ab1f5697"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table.dat",
+      "bytes": 420,
+      "sha256": "e64d99f1dba945f02a65c5a6fafd1143671e2668a0dd1f8eb6f184acf10ee542"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table_100pt_range_|8.15842|.dat",
+      "bytes": 3924,
+      "sha256": "54a2a688ee417e893993c7c8fd35edb970fb076d9df314f004cce07e44662be1"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table_24pt_range_|5.33409|.dat",
+      "bytes": 927,
+      "sha256": "3a6367720d5a7659340c5aa0ed3fc85cf3c56660ed326301d5a4f61cee6eb1ee"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table_48pt_range_|6.70095|.dat",
+      "bytes": 1872,
+      "sha256": "9950eeb2efa532b2189fcdb2d5173cc9ab073179bfcbc9cf572bbe222e040337"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table_56pt_range_|7.0064|.dat",
+      "bytes": 2193,
+      "sha256": "11cbde0164374aa1c1f95b4c68776b38c3aca9fb8ad7c121ed7ae85bd54f6131"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_gauss_table_64pt_range_|7.27131|.dat",
+      "bytes": 2507,
+      "sha256": "e31d3c587a918d3e29ffb284bf17491e90c23f3f60dc9bb6e76338974992156a"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_sampling_gauss_table.dat",
+      "bytes": 705,
+      "sha256": "5c654c4e077b4ce2499c1035d3b0feee9107c78d90d08dd95d47e3871db2122e"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_1201pt_range|6|.dat",
+      "bytes": 28808,
+      "sha256": "fbad9f5317be702f672d67e7d8d74ef7892dfefc8d3a97e2b6059461a4123444"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_1401pt_range_|7|.dat",
+      "bytes": 24767,
+      "sha256": "1df9bdf390ffbf2fdeb61755103f30088dec0850a3850df8e077f755ed657adb"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_161pt.dat",
+      "bytes": 2182,
+      "sha256": "52b6a5af82b4ac3637340af5c55f3203dc9fb73b3fca27cf4b8c6eff2ea664e7"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_17pt.dat",
+      "bytes": 171,
+      "sha256": "96dee0440e1ba8a8d373696c2fab65507362b36c1ee905c681165127653c6c84"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_241pt.dat",
+      "bytes": 6068,
+      "sha256": "929c3420d929c8facf1c9359cafdd0aacbac21546165437547b96e0f89678252"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_25pt.dat",
+      "bytes": 251,
+      "sha256": "0cfef531c24f7fa7367620cfc0443aec8c5da0232d469f2f96afcfcb72341c12"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_26pt.dat",
+      "bytes": 606,
+      "sha256": "f44efbdc430c9b63ea3ff5a331246622a1909df51baa132e759a361e09a52f0e"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_321pt.dat",
+      "bytes": 4983,
+      "sha256": "5f7c7c29bb00d09eddf92dc3342de178a52e9269b81f84fef17b44027190156b"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_4001pt_range_|4|.dat",
+      "bytes": 78010,
+      "sha256": "c79cf1d15b40991dd8815f5569d42430be57d2865ebe4c6fd67ddec32f9cefff"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_41pt.dat",
+      "bytes": 411,
+      "sha256": "db58d0a6b8296d2c0a9c68a9d4d1fbed3b78b8cc5f606d93253f4e17a285503d"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_49pt.dat",
+      "bytes": 568,
+      "sha256": "afb34596ceb22349b7f46297607dc555ae1db8dcc9a3c7936c8092c533792b5c"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_57pt.dat",
+      "bytes": 571,
+      "sha256": "8338907e729e828f2acf75963adb987c2cc0d11e20b2b7a356f9c281fb79c940"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_81pt.dat",
+      "bytes": 941,
+      "sha256": "943cec6efaa94bdc4b5ad5c7dc596bd4066bd26cfcf819fc138136566484cd1b"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_961pt.dat",
+      "bytes": 26255,
+      "sha256": "f54ecdd22c81ca556283d209b756084d1094e06ee593c427142a627906ab7d85"
+    },
+    {
+      "name": "iS3D/tables/eta/eta_trapezoid_table_9pt.dat",
+      "bytes": 91,
+      "sha256": "6d1978b907a9ba778362cf8b4092583a289313fa57d6e7efaccaaad878f790d5"
+    },
+    {
+      "name": "iS3D/tables/gauss_legendre_24pts.dat",
+      "bytes": 816,
+      "sha256": "bcf3d03340ce8bac40b4c1355ae3bc8bc41772c7fd89b565c7ad9fdc2adb560c"
+    },
+    {
+      "name": "iS3D/tables/gauss_legendre_32pts.dat",
+      "bytes": 1094,
+      "sha256": "13dc33f4315ee9fdebc6cc1914330939a474f960a66c5aa281bb7a06b278eede"
+    },
+    {
+      "name": "iS3D/tables/gauss_legendre_48pts.dat",
+      "bytes": 1646,
+      "sha256": "638614718ddda582fadcc0845b73fc176913510350baec5bd4e0b14bb7ab5941"
+    },
+    {
+      "name": "iS3D/tables/gla123_roots_weights_32_pts.dat",
+      "bytes": 3845,
+      "sha256": "3ea204e4b228d16e70ba0775c5399532c281bd871cbb88758230a5fe1d37bff0"
+    },
+    {
+      "name": "iS3D/tables/gla123_roots_weights_64_pts.dat",
+      "bytes": 7612,
+      "sha256": "75004e911d19f81c26f5c42fa4214df4fba34baf21027837d6594fb24360824a"
+    },
+    {
+      "name": "iS3D/tables/gla12_roots_weights_64_pts.dat",
+      "bytes": 5076,
+      "sha256": "4734e2f914f7fd0e0b744c12d223e1547f14d7fcbc4dfc2f7c9bdf3d66d95615"
+    },
+    {
+      "name": "iS3D/tables/gla_roots_weights_16_points.txt",
+      "bytes": 16232,
+      "sha256": "03e957f99ad34699a9d15a0e62893aee211a309b4686cad643799e0356cae792"
+    },
+    {
+      "name": "iS3D/tables/gla_roots_weights_20_points.txt",
+      "bytes": 20346,
+      "sha256": "8ab759fbf9bcdd3d3a07e92136e0999ab7a989571c4dc1d7d1033b664bdc5e8c"
+    },
+    {
+      "name": "iS3D/tables/gla_roots_weights_32_points.txt",
+      "bytes": 33446,
+      "sha256": "f03d613528e5c4172f589be23d3bede0d3ac7231409ba5e1db9d50ebe61c500b"
+    },
+    {
+      "name": "iS3D/tables/gla_roots_weights_48_points.txt",
+      "bytes": 50378,
+      "sha256": "dc39dfe40465f462a502ff715e88a9123d3c9c4b42bac9dbfd722b969c773922"
+    },
+    {
+      "name": "iS3D/tables/gla_roots_weights_64_points.txt",
+      "bytes": 67396,
+      "sha256": "eeb3cd4f620bd74090f1821825a948dec4cf24ac17eee1c0d125c3c7e04ce722"
+    },
+    {
+      "name": "iS3D/tables/pT_gauss_legendre_table.dat",
+      "bytes": 1281,
+      "sha256": "1fce4b0ecf7e90c3a7d7bd0b09813ac32b8666028aac62213e62455853f8c4a8"
+    },
+    {
+      "name": "iS3D/tables/pT_gauss_table.dat",
+      "bytes": 420,
+      "sha256": "4408bdfc36695504048c464f3db9c74bd61c3aabd71ea3be831afbbb04d71ef4"
+    },
+    {
+      "name": "iS3D/tables/pT_single_long_table.dat",
+      "bytes": 1455,
+      "sha256": "12c0896ad116f43bf382c0af21f37aebe5d71b298b2a9315f07fd9c6837a9109"
+    },
+    {
+      "name": "iS3D/tables/pT_uniform_3_table.dat",
+      "bytes": 440,
+      "sha256": "ac790d2d68e337500f34b14ef677976d8bcbf5718af0507d5bf9c5b0a128fa67"
+    },
+    {
+      "name": "iS3D/tables/pT_uniform_4_table.dat",
+      "bytes": 585,
+      "sha256": "04b8c836f4cc71b2346d20926815ac4ef5dcc25b9ed9fec084091c4bdb188aee"
+    },
+    {
+      "name": "iS3D/tables/pT_uniform_table.dat",
+      "bytes": 585,
+      "sha256": "04b8c836f4cc71b2346d20926815ac4ef5dcc25b9ed9fec084091c4bdb188aee"
+    },
+    {
+      "name": "iS3D/tables/phi_0_table.dat",
+      "bytes": 15,
+      "sha256": "5e944324fc2569dd16b90f0df0970665f5b2d706f0373fb570a4f59bb5ce9656"
+    },
+    {
+      "name": "iS3D/tables/phi_gauss_legendre_table.dat",
+      "bytes": 941,
+      "sha256": "d7dcd89a80034d9c9870cc528eecce9d9591f75b39bc7130a1803e6e38fb7474"
+    },
+    {
+      "name": "iS3D/tables/phi_gauss_table.dat",
+      "bytes": 1584,
+      "sha256": "950a32dc2f223a4592c34c0e433d6ac265540ca0e005850d23e937c42e1a690c"
+    },
+    {
+      "name": "iS3D/tables/readme.txt",
+      "bytes": 140,
+      "sha256": "a7c49f5741112bc447720aee9d13238a3f3ec02c5b3b861b48375527eb3e58a8"
+    },
+    {
+      "name": "iS3D/tables/y_table_1pt.dat",
+      "bytes": 8,
+      "sha256": "369a1585427e825ddd10457ed9a78f59f5689b825a063466cfe49b725fcd1213"
+    },
+    {
+      "name": "iS3D/tables/y_trapezoid_table_21pt.dat",
+      "bytes": 178,
+      "sha256": "bec0b93d1a2481aa2db71f2d2a58f4e5a91af385b7d20cc8393036656ada1204"
+    },
+    {
+      "name": "iS3D/tables/y_trapezoid_table_29pt.dat",
+      "bytes": 246,
+      "sha256": "f59a2879d60f9b5da48f5b6b8f74adc57ec654f44f92e47870e6d6fc4f1b9cb3"
+    },
+    {
+      "name": "licenses/MUSIC-GPL-2.0.txt",
+      "bytes": 18091,
+      "sha256": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505"
+    },
+    {
+      "name": "licenses/iS3D-MIT.txt",
+      "bytes": 1095,
+      "sha256": "6512531cda1f69c86cfeacfd7b782bc55fd6365db7f816ca3e51fe44e0a46e31"
+    },
+    {
+      "name": "licenses/pce-eventgen-MIT.txt",
+      "bytes": 1120,
+      "sha256": "c53a349a890d2e7dc255d6c05c9810057e232f8fc7f2fd21a4c422892744eae3"
+    },
+    {
+      "name": "manifests/is3d-coefficients.json",
+      "bytes": 2036,
+      "sha256": "3d7db47017d58f5c61b57cd3952de54d18a3abfcf49e7239b9f4e750816e1c53"
+    },
+    {
+      "name": "manifests/music-eos.json",
+      "bytes": 5066,
+      "sha256": "fec513cc96b0723e53599b96e078f116ce840a31c38c7be616cb2cdaadfd8a25"
+    }
+  ]
+}

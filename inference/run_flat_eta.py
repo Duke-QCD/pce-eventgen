@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stage B inference with a FLAT (T-independent) shear viscosity: eta_low = eta_high = 0.
+"""Bayesian inference with a FLAT (T-independent) shear viscosity: eta_low = eta_high = 0.
 
 Reference posterior for the fugacity sector. Fugacity enters MUSIC's EoS (T(eps) depends on
 gamma) and the eta/s kink temperature moves with gamma, so a T-dependent (eta/s)(T) is not a

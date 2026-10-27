@@ -9,6 +9,11 @@ export HIC_SOFTWARE_ROOT={{SOFTWARE_ROOT}}
 # GNU runtime module that run-events-wrapper loads on compute nodes; empty disables it.
 export HIC_RUNTIME_GCC_MODULE={{RUNTIME_GCC_MODULE}}
 
+# Safe defaults for Python control/cache/analysis processes. Generation and fill
+# set their own OpenMP count from the CPUs assigned to each event worker.
+export OMP_NUM_THREADS=1 OMP_PLACES=cores OMP_PROC_BIND=spread
+export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+
 # Campaign storage.
 export HIC_RAW_ROOT={{RAW_ROOT}}
 export HIC_CAMPAIGN_OUTPUT_ROOT={{OUTPUT_ROOT}}

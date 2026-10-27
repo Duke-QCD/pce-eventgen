@@ -222,7 +222,6 @@ install(FILES input.txt DESTINATION share/smash)
             root = Path(directory)
             (root / "nersc").mkdir()
             (root / "local").mkdir()
-            (root / "bin").mkdir()
             shutil.copy(ROOT / "nersc/install", root / "nersc/install")
             # Only the entrypoint routing runs; this stub never builds or installs.
             delegate = root / "local/install"
@@ -232,12 +231,8 @@ install(FILES input.txt DESTINATION share/smash)
                 '"$CXXFLAGS" "$CXX" "${BASH_ENV-unset}"\n'
             )
             delegate.chmod(0o755)
-            realpath = root / "bin/realpath"
-            realpath.write_text('#!/bin/sh\nprintf "/global/common/software/test-env\\n"\n')
-            realpath.chmod(0o755)
             env = os.environ.copy()
-            env.update(PATH=str(root / "bin") + os.pathsep + os.environ["PATH"],
-                       NERSC_HOST="test", CONDA_PREFIX="/fixture", CXX="chosen-compiler",
+            env.update(NERSC_HOST="test", CONDA_PREFIX=str(root / "existing environment"), CXX="chosen-compiler",
                        CXXFLAGS="chosen-flags", BASH_ENV="/unused/profile")
             for arguments in ([], ["--", "-DFIXTURE=with space"],
                               ["SMASH", "--", "-DFIXTURE=with space"],
@@ -256,6 +251,29 @@ install(FILES input.txt DESTINATION share/smash)
                         self.assertIn("arg=-DFIXTURE=with space\n", result.stdout)
                     self.assertIn("flags=chosen-flags\ncompiler=chosen-compiler\nbash_env=unset\n",
                                   result.stdout)
+
+    def test_nersc_accepts_existing_conda_location_and_still_requires_activation(self):
+        with tempfile.TemporaryDirectory(prefix="nersc existing conda ") as directory:
+            root = Path(directory)
+            for name in ("nersc", "local", "existing environment/bin"):
+                (root / name).mkdir(parents=True)
+            shutil.copy(ROOT / "nersc/install", root / "nersc/install")
+            shutil.copy(ROOT / "local/install", root / "local/install")
+            prefix = root / "existing environment"
+            (prefix / "bin/python").symlink_to(sys.executable)
+            env = os.environ.copy()
+            for key in ("CONDA_PREFIX", "VIRTUAL_ENV", "BASH_ENV", "ENV"):
+                env.pop(key, None)
+            env.update(NERSC_HOST="test", PATH=str(prefix / "bin") + os.pathsep + env["PATH"])
+            command = ["sh", str(root / "nersc/install"), "SMASH"]
+            result = subprocess.run(command, env=dict(env, CONDA_PREFIX=str(prefix)),
+                                    capture_output=True, text=True)
+            # Passing the environment check reaches the missing-source check, without a build.
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("missing source tree", result.stderr)
+            result = subprocess.run(command, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("must install in an active python virtualenv or conda env", result.stdout)
 
 
 if __name__ == "__main__":

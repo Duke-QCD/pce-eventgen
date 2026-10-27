@@ -2,30 +2,16 @@
 
 [Handbook](../README.md) · [Commands](commands.md) · [Physics](physics.md)
 
-The supported shared format is an INI file. Generate a personal one with
-`nersc/configure_user.py`, which fills in
-[config/templates/calibration.ini](../../config/templates/calibration.ini);
-[NERSC setup](../../nersc/SETUP.md) describes every required path and input.
+The supported shared format is an INI file. Generate a personal one with `nersc/configure_user.py`, which fills in [config/templates/calibration.ini](../../config/templates/calibration.ini); [NERSC setup](../../nersc/SETUP.md) describes every required path and input.
 
 ## Resolution rules
 
-- Explicit CLI values override INI values, then the backend's defaults apply.
-  [Generated CLI tables](commands.md#complete-source-indexed-flag-tables) show
-  declarations; they do not evaluate the selected environment or INI.
-- Paths expand `~`, `$VAR`, and `${VAR}`. Relative paths resolve from the
-  **launch directory**, including paths stored inside an absolute INI filename.
-  Unresolved path variables are errors. Use absolute paths for shared profiles.
-- Boolean INI values accept `true/false`, `yes/no`, `on/off`, `1/0`.
-  Space-separated lists are used for bins, harmonics, and PIDs.
-- Section and key validation is strict: an unknown section or key is an error.
-  Do not invent a key by replacing a flag's hyphens with underscores. The
-  tables below enumerate accepted keys.
-- `--submit`, `--apply`, shortfall acceptance/reason, and similar execution
-  controls stay explicit on the CLI; they are not INI keys. INI keys such as
-  `[run] initialize` and `[repair] apply_repairs` are policy for a command that
-  acts (`events --submit`); previews never initialize or apply repairs.
-- Every command has its own selection. Generation rows do not limit survey,
-  manifests, cache/reap, or analysis. A display filter does not narrow a manifest.
+- Explicit CLI values override INI values, then the backend's defaults apply. [Generated CLI tables](commands.md#complete-source-indexed-flag-tables) show declarations; they do not evaluate the selected environment or INI.
+- Paths expand `~`, `$VAR`, and `${VAR}`. Relative paths resolve from the **launch directory**, including paths stored inside an absolute INI filename. Unresolved path variables are errors. Use absolute paths for shared profiles.
+- Boolean INI values accept `true/false`, `yes/no`, `on/off`, `1/0`. Space-separated lists are used for bins, harmonics, and PIDs.
+- Section and key validation is strict: an unknown section or key is an error. Do not invent a key by replacing a flag's hyphens with underscores. The tables below enumerate accepted keys.
+- `--submit`, `--apply`, shortfall acceptance/reason, and similar execution controls stay explicit on the CLI; they are not INI keys. INI keys such as `[run] initialize` and `[repair] apply_repairs` are policy for a command that acts (`events --submit`); previews never initialize or apply repairs.
+- Every command has its own selection. Generation rows do not limit survey, manifests, cache/reap, or analysis. A display filter does not narrow a manifest.
 
 ## `[files]`: generation source inputs
 
@@ -49,17 +35,13 @@ The supported shared format is an INI file. Generate a personal one with
 | `initialize` | Boolean: `events --submit` initializes new bundles before repair/submission; script default false |
 | `refuse_existing` | Boolean: `events --submit` stops before acting if a selected design directory exists; script default false; generated profiles set true |
 
-Generated profiles select row 0 only and initialize new bundles. When deliberately
-resuming existing directories, pass `--allow-existing` (or set
-`refuse_existing = false`) after inspecting them. Nothing is overwritten: an
-existing `initial.hdf` and initialized parameters are always kept. The
-production INI has initialization off.
+Generated profiles select row 0 and initialize new bundles. Resume inspected existing directories with `--allow-existing` (or `refuse_existing=false`); initialized parameters and `initial.hdf` remain unchanged.
 
 ## `[submit]`: generation modes, resources, and logs
 
 | Key | Meaning |
 |---|---|
-| `mode` | `hydro`, `afterburner`, `both`, `auto`; script default `hydro`, production INI `auto` |
+| `mode` | `hydro`, `afterburner`, `both`, `auto`; script default `hydro`, generated INI `auto` |
 | `restore_archives` | Boolean opt-in; valid with `afterburner` or orchestrator `auto` |
 | `max_afterburner_retries` | Persistent per-event attempt cap; script/runner default 3 |
 | `time`, `qos` | Slurm walltime `HH:MM:SS` and queue policy; omitted values use launcher's defaults |
@@ -69,17 +51,11 @@ production INI has initialization off.
 | `slurm_log_root` | Batch stdout/stderr destination passed to `sbatch` |
 | `event_log_root` | Runner log root exported to launcher as `LOG_ROOT`; rank-specific logs below it |
 
-Generation's account is set in the launcher's `#SBATCH --account` (the profile
-helper writes it). There is **no** `[submit] account`. Cache jobs have their
-own `[cache] account`. `jobs_per_design`, tasks per node, CPUs per task, and
-`nevents` are different controls; none is the iS3D oversample count.
+Generation's account is set in the launcher's `#SBATCH --account` (the profile helper writes it). There is **no** `[submit] account`. Cache jobs have their own `[cache] account`. `jobs_per_design`, tasks per node, CPUs per task, and `nevents` are different controls; none is the iS3D oversample count.
 
 ## `[repair]`: between-pass recovery and surface archives
 
-`repair` alone is a dry-run audit. `repair --apply` applies repairs, and
-`events --submit` applies them when `apply_repairs = true`. Applied repairs
-require no queued/running workers or transfers for the selected designs: they
-clear locks regardless of age.
+`repair` alone is a dry-run audit. `repair --apply` applies repairs, and `events --submit` applies them when `apply_repairs = true`. Applied repairs require no queued/running workers or transfers for the selected designs: they clear locks regardless of age.
 
 | Key | Meaning |
 |---|---|
@@ -94,12 +70,7 @@ clear locks regardless of age.
 | `archive_remove_local` | Boolean; remove local surface after verified finalization; requires applied repair |
 | `afterburner_done_template` | Optional known-good completion marker template for finalization |
 
-Repair never turns an ambiguous particle output into good data by simply
-adding a marker. Read the audit bucket and the original log. A first audit:
-
-```bash
-python models/campaign.py --config "$CFG" repair
-```
+Inspect audit buckets and original logs before applying repairs; adding a marker does not resolve ambiguous output. The [runbook](../nersc-campaign.md#1-generate-or-resume-events) gives the audit/apply sequence.
 
 ## `[pipeline]`: data products and provenance paths
 
@@ -117,9 +88,7 @@ python models/campaign.py --config "$CFG" repair
 | `slurm_log_root` | Cache batch log root; falls back to generation log setting where mapped |
 | `analysis_out_dir` | Per-design statistics, matrix, and default feeddown output directory |
 
-Use different campaign roots and unique campaign basenames for separate runs.
-Cache staging, published cache, raw scratch, archives, and analysis artifacts
-are distinct storage products. Reaping raw does not remove staging or archives.
+Use different campaign roots and unique campaign basenames for separate runs. Cache staging, published cache, raw scratch, archives, and analysis artifacts are distinct storage products. Reaping raw does not remove staging or archives.
 
 ## `[cache]`: cache policy and resources
 
@@ -137,22 +106,15 @@ are distinct storage products. Reaping raw does not remove staging or archives.
 | `account`, `constraint`, `qos`, `time` | Cache Slurm allocation, CPU constraint, queue policy, walltime |
 | `jobs` | Simultaneous designs for local cache/reap execution inside an allocation |
 
-Generated INIs request `nprocs=16`, `designs_per_task=4`, `cores=128`,
-`throttle=4`, `jobs=4`, 50 events/shard, and 50 validation events. These are
-campaign settings, not measured requirements for your machine. An interactive
-cache allocation should accommodate approximately `jobs × nprocs` worker
-processes plus overhead. Local pools do not span multiple nodes automatically.
+These template values need sizing for your allocation. Interactive cache work requires approximately `jobs × nprocs` workers plus overhead on one node; batch packing is explained in [cache execution](../nersc-campaign.md#3-cache-and-publish).
 
-Skipped malformed rows drop particles; dropped bad events exclude entire
-hydro events. Neither is permission to accept unfinished generation. Genuine
-generation shortfalls require explicit `--accept-shortfall --shortfall-reason`
-on a separately reviewed selection. Defaults from the bare cache builder are
-stricter than the example campaign; consult the source-indexed table.
+Malformed rows drop particles; bad-event exclusions drop hydro events. Neither accepts unfinished generation. Use the [separate reviewed shortfall procedure](../nersc-campaign.md#configuration-and-selection) for deliberate short designs. Bare builder defaults are stricter than generated profiles.
 
 ## `[analysis_campaign]`: published-cache analysis
 
 | Key | Meaning / generated INI value |
 |---|---|
+| `analysis_profile` | Observable definitions: `baseline` (default) or `oo_cross_full_pt027_flat/v3`; see [OO profile setup](../analysis.md#oo5360-observable-profile) |
 | `jobs` | Concurrent extraction/feeddown designs; 8 |
 | `estimator` | Cached centrality field; `cent_ch_eta10` (charged multiplicity within \|η\| < 1) |
 | `bin_edges` | Centrality percentiles; `0 5 10 20 30 40 50 60 70 80` |
@@ -162,11 +124,7 @@ stricter than the example campaign; consult the source-indexed table.
 | `et_eta_window` | ET extraction pseudorapidity half-width; 0.5 |
 | `harmonics` | Harmonics required by matrix consistency validation; `2 3` |
 
-Bare aggregation without configured bins uses 20 five-percent bins across
-0–100%; generated INIs use nine bins ending at 80%. Harmonics here select
-validation requirements, not new harmonics to calculate. Cache acceptance and
-Q-vector content come from the fingerprint and builder. See
-[analysis](../analysis.md) for what can be changed without rebuilding raw data.
+Baseline aggregation without configured bins uses 20 five-percent bins across 0–100%; OO v3 defaults to 1% bins through 5%, then 5% through 80%. Explicit INI/CLI bins override these defaults; generated INIs use nine bins ending at 80%. Harmonics here select validation requirements, not new harmonics to calculate. Cache acceptance and Q-vector content come from the fingerprint and builder. See [analysis](../analysis.md) for what can be changed without rebuilding raw data.
 
 ## `[feeddown]`: separate inventory yields
 
@@ -176,13 +134,8 @@ Q-vector content come from the fingerprint and builder. See
 | `combine_antiparticles` | Boolean, sum particles and antiparticles; example true |
 | `out` | Optional output path; default through campaign config is `<analysis_out_dir>/feeddown_yields.npz` |
 
-Shares estimator, bins, and concurrency with `[analysis_campaign]`. This is an
-inventory multiplicity product, not an automatic correction to the matrix.
+Shares estimator, bins, and concurrency with `[analysis_campaign]`. This is an inventory multiplicity product, not an automatic correction to the matrix.
 
 ## Changing a campaign
 
-Changing systems requires coordinating the system key, design normalization
-column, grid and cross section, any nuclear table, all storage roots, expected
-fingerprint, centrality/acceptance choices, and runtime data. `--system OO5360`
-alone is insufficient. Existing bundles retain their initialized physics.
-Keep the exact design table and bundle provenance for a resumed campaign.
+Changing systems requires coordinating the system key, design normalization column, grid and cross section, any nuclear table, all storage roots, expected fingerprint, centrality/acceptance choices, and runtime data. `--system OO5360` alone is insufficient. Existing bundles retain their initialized physics. Keep the exact design table and bundle provenance for a resumed campaign.
