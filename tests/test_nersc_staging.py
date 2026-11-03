@@ -71,6 +71,7 @@ class NerscStagingTests(unittest.TestCase):
             'models/music-hydro/EOS/PCE/README.md',
             'models/iS3D/PDG/pdg_smash_pce.dat',
             'models/iS3D/deltaf_coefficients/vh/smash/F.dat',
+            'inference/model/design_params_combined500.dat',
         )
         excluded = (
             '.git/objects/85/randomhash', 'models/SMASH/.git', '.recovery/saved.tar',
@@ -79,6 +80,7 @@ class NerscStagingTests(unittest.TestCase):
             'personal/notes.txt', 'private/notes.txt', 'scratch/notes.txt',
             'multisystem-calibration-paper/main.tex',
             'multisystem-calibration-paper-source.zip',
+            'multisystem-calibration-dissertation-reuse-20261103/sections/results.tex',
             'dist/release.tar.gz', 'physics-data/EOS/PCE/strange_30_10000/0.dat',
             'inference/.venv/bin/python', 'models/__pycache__/cached.pyc',
             'models/SMASH/build-deps/lib.so', 'models/trento/build/CMakeCache.txt',
@@ -89,6 +91,7 @@ class NerscStagingTests(unittest.TestCase):
             'models/music-hydro/EOS/PCE/strange_30_10000/0.dat',
             'models/iS3D/deltaf_coefficients/vh/smash_pce_light_strange/F.dat',
             'inference/plots_walkthrough/plot.pdf', 'inference/scan_example/chain.npz',
+            'inference/studies/personal/study.json',
         )
         for name in wanted + excluded:
             self.write(self.source / name, 'local edit: ' + name + '\n')
@@ -96,6 +99,9 @@ class NerscStagingTests(unittest.TestCase):
         script.chmod(0o750)
         link = self.source / 'models/SMASH/src/source-link.cc'
         link.symlink_to('custom.cc')
+        design_link = self.source / 'config/initialization/design_params_combined500.dat'
+        design_link.parent.mkdir(parents=True)
+        design_link.symlink_to('../../inference/model/design_params_combined500.dat')
         destination = self.root / 'destination'
         # Capture rsync's inherited stdout without changing its real operation.
         run = subprocess.run
@@ -108,6 +114,10 @@ class NerscStagingTests(unittest.TestCase):
             for name in excluded:
                 self.assertFalse((destination / name).exists(), name)
             self.assertTrue((destination / 'models/SMASH/src/source-link.cc').is_symlink())
+            copied_design = destination / 'config/initialization/design_params_combined500.dat'
+            self.assertTrue(copied_design.is_symlink())
+            self.assertEqual(copied_design.read_bytes(),
+                             (destination / 'inference/model/design_params_combined500.dat').read_bytes())
             self.assertEqual((destination / 'local/install').stat().st_mode & 0o777, 0o750)
             # Content changes are copied even with the same size and modification time.
             original_stat = script.stat()

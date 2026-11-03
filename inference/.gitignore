@@ -2,6 +2,10 @@
 __pycache__/
 *.py[cod]
 .matplotlib/
+.pytest_cache/
+
+# Personal study configurations, inputs and notes, also in standalone copies.
+/studies/
 
 # Generated model inputs are selected separately for each inference campaign.
 /model/*.npz

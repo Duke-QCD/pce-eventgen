@@ -4,3 +4,5 @@ numpy==1.26.4
 scipy==1.14.1
 matplotlib==3.10.8
 scikit-learn==1.8.0
+# Source-image review overlays in the optional O-O proxy builder.
+Pillow==12.0.0

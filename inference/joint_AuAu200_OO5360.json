@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "design": "model/design_params_combined500.dat",
+  "shear_mode": "flat",
+  "systems": [
+    {
+      "system": "AuAu200",
+      "matrix": "model/model_matrix_AuAu200.npz"
+    },
+    {
+      "system": "OO5360",
+      "matrix": "model/model_matrix_OO5360.npz"
+    }
+  ]
+}

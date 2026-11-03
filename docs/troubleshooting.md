@@ -58,6 +58,10 @@ For an initialized campaign, follow the [login-node resume procedure](nersc-camp
 
 **Afterburner retries exhausted:** inspect `afterburner.failed`, persistent retry count, data selections, and logs. Fix the cause before planning another attempt. Raising the retry cap alone does not repair corrupt data.
 
+**iS3D segfaults after sampling finishes:** a backtrace through `gsl_spline_free` and `Deltaf_Data::~Deltaf_Data()` can indicate an older build freeing uninitialized optional spline pointers during cleanup. The maintained source initializes those pointers and guards their frees. Check the executable selected by `HIC_IS3D_EXEC`, test the corrected build on an isolated event copy, and compare sampled output with the same fixed seed and physics inputs before resuming. Preserve retry counts and increase the retry ceiling only after fixing the crash.
+
+The older `music-eventgen` runner could continue after a sampler crash if its sampled output file was nonempty. The current `run-events` requires a successful iS3D exit before conversion or SMASH, even if that file exists. Such crashes consume the persistent afterburner retry budget; once the ceiling is reached, later jobs skip the event.
+
 **`archive.failed` after particle output:** check archive destination permissions, free space, `zstd`, and selected root. With valid completed particles and local surface, repair's finalization can finish archiving without rerunning transport. Use the documented applied/finalize/root controls and examine its refusal if particle structure or archive destinations disagree.
 
 **`hydro.no_surface`:** this can be a valid zero-output event. It is not the same as MUSIC failing to create a surface file. Count clean no-surface events toward the target; resolve conflicting markers or particles before caching.

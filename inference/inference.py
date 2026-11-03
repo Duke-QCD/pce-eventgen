@@ -27,8 +27,18 @@ contract so it swaps cleanly.)
 Sampler: dependency-free Goodman-Weare stretch-move ensemble (swap emcee/STAT in
 at the same boundary).
 
+Parameter policy: --parameter-mode {all (default), system, flat-eta} selects which parameters are
+sampled; --shear-mode flat conditions eta_low = eta_high = 0, so eta_min is the constant eta/s
+(temperature-dependent samples both slopes). Fixed parameters are conditioned in the full-design
+emulator, never dropped from its training.
+
+Multi-system: joint_inference.py (see JOINT.md) combines one emulator per system into a posterior
+over shared physics parameters. It passes explicit system=/fixed_params= arguments to
+prepare_inputs/input_config instead of calling use_system().
+
     python inference.py              # full inference (Au-Au)
     python inference.py --system OO5360 --emulator-only
+    python inference.py --system OO5360 --shear-mode flat
     python inference.py --emulator-only
     python inference.py --selftest
 """
@@ -39,6 +49,7 @@ import json
 from pathlib import Path
 from collections import defaultdict
 import numpy as np
+from design_parameters import PARAMS_ALL
 
 import matplotlib
 matplotlib.use("Agg")
@@ -63,47 +74,29 @@ warnings.filterwarnings("ignore", category=ConvergenceWarning)  # GP bound-hits;
 # ============================================================
 ROOT = Path(__file__).resolve().parent
 DESIGN_DIR = str(ROOT / "model")   # staged matrices and feed-down inventories
-# The campaign design table is shared with event generation.
-DESIGN_DAT  = str(ROOT.parent / "config/initialization/design_params_combined500.dat")
+# Keep the bundled table local so this directory also works as a standalone copy.
+# Event generation retains a compatibility link to this same canonical file.
+DESIGN_DAT  = str(ROOT / "model/design_params_combined500.dat")
 
 # ============================================================
-# Design parameters — order MUST match the design file header.
-# Ranges are the TRUE prior box of design_params_combined500.dat
-# (old norm ranges: norm200 in [5,20], not make_design.py's [3,10]).
+# Design parameters and generation share the same order and prior box in
+# design_parameters.py. Its ranges match design_params_combined500.dat.
 # ============================================================
-PARAMS_ALL = [
-    ("norm5360",  25.0, 60.0),
-    ("norm5020",  20.0, 50.0),
-    ("norm2760",  15.0, 40.0),
-    ("norm200",    5.0, 20.0),
-    ("w",          0.5,  1.5),
-    ("k",          0.8,  2.2),
-    ("tau_l",      0.0, 10.0),
-    ("tau_s",      0.0, 10.0),
-    ("gamma_l_0",  0.1,  1.0),
-    ("gamma_s_0",  0.1,  1.0),
-    ("eta_min",    0.01, 0.2),
-    ("eta_low",   -2.0,  1.0),
-    ("eta_high",  -1.0,  2.0),
-    ("zeta_max",   0.01, 0.25),
-    ("zeta_width", 0.01, 0.15),
-    ("zeta_skew", -1.0,  1.0),
-    ("zeta_T",     0.12, 0.3),
-]
 # Each system uses exactly one beam-energy normalization; the others have no effect on it and are
 # dropped from the emulator input (DROP_PARAMS is derived per system in use_system()).
 NORM_PARAMS = ("norm5360", "norm5020", "norm2760", "norm200")
+SHEAR_MODES = ("temperature-dependent", "flat")
 
-# Parameters held FIXED (not sampled). The data cannot constrain these (see the identifiability
-# table: inert, or emulator-sensitive but degenerate), and with only 242 designs a 14-D box is far
-# too sparse -> the posterior wanders into emulator-extrapolation territory and rails at the walls.
-# These are CONDITIONED in the full 14-D emulator (it still trained on their design variation), NOT
-# dropped from it -- so no signal becomes noise. Sampling runs over the remaining 8 free params.
+# Au-Au `--parameter-mode system` slice: six parameters held FIXED, eight sampled. Adopted when the
+# design had 242 points, too sparse for 14-D (the posterior wandered into emulator-extrapolation
+# territory and railed at the walls). With the 500-point design the primary fit (--parameter-mode
+# all) samples all 14; this slice remains an optional variant. Fixed parameters are CONDITIONED in
+# the full 14-D emulator (it still trains on their design variation), NOT dropped from it -- so no
+# signal becomes noise.
 #   inert  (fixing ~free): k, eta_low, eta_high  -- fixed at prior-box midpoints
-#   bulk shape (physics choice): zeta_width, zeta_T, zeta_skew fixed to a standard symmetric
-#     (zeta/s)(T) peak near T_c; zeta_max (the magnitude) stays FREE as the single bulk parameter.
-#     Placeholders -- substitute the exact published Bayesian-MAP values (Bernhard et al. 2019,
-#     Nat.Phys. 15, 1113; JETSCAPE arXiv:2011.01430) for that specific curve.
+#   bulk shape (physics choice): zeta_width, zeta_T, zeta_skew fixed to a generic symmetric
+#     (zeta/s)(T) peak near T_c (not a published MAP curve); zeta_max (the magnitude) stays FREE
+#     as the single bulk parameter.
 FIXED_PARAMS_AUAU = {
     "k":        1.5,    # TRENTo mult-fluctuation shape (prior mid [0.8,2.2]); ~inert (obs shift <=1.4 sigma)
     "eta_low": -0.5,     # (eta/s) low-T slope (prior mid [-2,1]); inert (<=0.3 sigma)
@@ -287,11 +280,8 @@ _SYSTEM_KEYS = {"matrix", "profile", "data_dir", "out_dir", "prefix", "norm", "d
                 "primary_drop", "feeddown_npz", "feeddown_corr"}
 
 
-def use_system(name):
-    """Install SYSTEMS[name] as the active system (module globals). Call BEFORE overriding any
-    global such as I.FIXED_PARAMS -- this resets them to the system's defaults."""
-    global SYSTEM, MATRIX_NPZ, PROFILE, DATA_DIR, OUT_DIR, OUT_PREFIX, DATA_SPEC, DROP_PARAMS
-    global FIXED_PARAMS, FEEDDOWN_NPZ, FEEDDOWN_CORR, SYSTEM_DROP
+def system_config(name):
+    """Validate and return a system adapter without changing the active system."""
     if name not in SYSTEMS:
         raise KeyError(f"unknown system {name!r}; known: {sorted(SYSTEMS)}")
     cfg = SYSTEMS[name]
@@ -303,6 +293,15 @@ def use_system(name):
     names = [s["name"] for s in cfg["data_spec"]]
     if len(set(names)) != len(names):
         raise ValueError(f"SYSTEMS[{name!r}] data_spec has duplicate names")
+    return cfg
+
+
+def use_system(name):
+    """Install SYSTEMS[name] as the active system (module globals). Call BEFORE overriding any
+    global such as I.FIXED_PARAMS -- this resets them to the system's defaults."""
+    global SYSTEM, MATRIX_NPZ, PROFILE, DATA_DIR, OUT_DIR, OUT_PREFIX, DATA_SPEC, DROP_PARAMS
+    global FIXED_PARAMS, FEEDDOWN_NPZ, FEEDDOWN_CORR, SYSTEM_DROP
+    cfg = system_config(name)
     SYSTEM = name
     MATRIX_NPZ, DATA_DIR, OUT_DIR, OUT_PREFIX = cfg["matrix"], cfg["data_dir"], cfg["out_dir"], cfg["prefix"]
     PROFILE = cfg["profile"]
@@ -418,8 +417,8 @@ PARAM_GROUPS = {   # filtered to active params at plot time; empty groups skippe
 # ============================================================
 # Loading: matrix, design, X
 # ============================================================
-def load_matrix(path):
-    check_system_meta(path, profile=PROFILE)
+def load_matrix(path, *, system=None, profile=None):
+    check_system_meta(path, system=system, profile=PROFILE if profile is None else profile)
     with np.load(path, allow_pickle=False) as z:
         Y, errors = np.asarray(z["Y"], float), np.asarray(z["Y_err"], float)
         labels, names = z["feature_labels"].astype(str), z["design_name"].astype(str)
@@ -448,7 +447,7 @@ def _parse_header(path):
     return None
 
 
-def load_design(path):
+def load_design(path, *, drop_params=None):
     arr = np.loadtxt(path)
     if arr.ndim == 1:
         arr = arr[None, :]
@@ -460,7 +459,8 @@ def load_design(path):
         raise ValueError(f"design has {arr.shape[1]} cols, want {len(expected)}")
     if not len(arr) or not np.isfinite(arr).all():
         raise ValueError("Design must contain finite parameter values.")
-    active = [i for i, (nm, _, _) in enumerate(PARAMS_ALL) if nm not in DROP_PARAMS]
+    drop_params = DROP_PARAMS if drop_params is None else drop_params
+    active = [i for i, (nm, _, _) in enumerate(PARAMS_ALL) if nm not in drop_params]
     names = [PARAMS_ALL[i][0] for i in active]
     ranges = np.array([[PARAMS_ALL[i][1], PARAMS_ALL[i][2]] for i in active], float)
     return arr, active, names, ranges
@@ -472,21 +472,22 @@ def build_X(design_arr, design_index, active):
     return np.ascontiguousarray(design_arr[design_index][:, active], float)
 
 
-def resolve_free(pnames, ranges):
+def resolve_free(pnames, ranges, *, fixed_params=None):
     """Split the active params into free (sampled) and fixed (held at FIXED_PARAMS). Returns
     free_pos (column indices into the active/emulator vector), free_names, free_ranges, and a
     'template' active-length vector holding the fixed values (free slots overwritten at eval)."""
-    unknown = set(FIXED_PARAMS) - set(pnames)
+    fixed = FIXED_PARAMS if fixed_params is None else fixed_params
+    unknown = set(fixed) - set(pnames)
     if unknown:
         raise ValueError(f"FIXED_PARAMS not among active params: {unknown}")
-    for nm, v in FIXED_PARAMS.items():
+    for nm, v in fixed.items():
         i = pnames.index(nm)
         if not (ranges[i, 0] <= v <= ranges[i, 1]):
             raise ValueError(f"fixed {nm}={v} outside prior [{ranges[i,0]},{ranges[i,1]}]")
-    free_pos = [i for i, nm in enumerate(pnames) if nm not in FIXED_PARAMS]
+    free_pos = [i for i, nm in enumerate(pnames) if nm not in fixed]
     free_names = [pnames[i] for i in free_pos]
     free_ranges = np.asarray(ranges, float)[free_pos]
-    template = np.array([FIXED_PARAMS.get(nm, 0.0) for nm in pnames], float)
+    template = np.array([fixed.get(nm, 0.0) for nm in pnames], float)
     return free_pos, free_names, free_ranges, template
 
 
@@ -499,7 +500,55 @@ def expand_free(theta_free, free_pos, template):
     return full
 
 
-def apply_feeddown(Y, labels, didx, path, corr=None):
+def shear_fixed_params(mode):
+    """Fixed shear coordinates for single- or multi-system parameter policies.
+
+    Both modes keep eta_min sampled. Flat viscosity conditions the full emulator
+    on zero slopes; no design columns are removed or retrained as noise.
+    """
+    if mode not in SHEAR_MODES:
+        raise ValueError(f"Unknown shear mode {mode!r}; choose from {SHEAR_MODES}")
+    return {"eta_low": 0.0, "eta_high": 0.0} if mode == "flat" else {}
+
+
+def parameter_fixed_params(parameter_mode="all", shear_mode=None, *, system=None):
+    """Resolve a parameter slice and shear choice without changing active settings.
+
+    flat-eta is the legacy spelling of all + flat. The system slice may fix
+    additional parameters; an explicit flat choice overrides its shear slopes.
+    """
+    if parameter_mode not in ("all", "system", "flat-eta"):
+        raise ValueError(f"Unknown parameter mode {parameter_mode!r}")
+    if parameter_mode == "flat-eta" and shear_mode not in (None, "flat"):
+        raise ValueError("--parameter-mode flat-eta conflicts with --shear-mode temperature-dependent")
+    shear_mode = shear_mode or ("flat" if parameter_mode == "flat-eta" else "temperature-dependent")
+    cfg = SYSTEMS[SYSTEM if system is None else system]
+    fixed = dict(cfg["fixed"]) if parameter_mode == "system" else {}
+    fixed.update(shear_fixed_params(shear_mode))
+    return fixed
+
+
+def configure_parameters(parameter_mode="all", shear_mode=None):
+    """Apply the selected parameter policy after use_system()."""
+    global FIXED_PARAMS
+    FIXED_PARAMS = parameter_fixed_params(parameter_mode, shear_mode)
+
+
+def selected_shear_mode(fixed_params=None):
+    """Derive the physical shear choice from fixed coordinates, including saved fits."""
+    fixed = FIXED_PARAMS if fixed_params is None else fixed_params
+    return "flat" if all(fixed.get(p) == 0.0 for p in ("eta_low", "eta_high")) else "temperature-dependent"
+
+
+def param_labels(fixed_params=None, base=None):
+    """Plot labels for a parameter slice: in flat-shear fits eta_min is the constant eta/s."""
+    labels = dict(PARAM_LABELS if base is None else base)
+    if selected_shear_mode(fixed_params) == "flat":
+        labels["eta_min"] = r"$\eta/s$"
+    return labels
+
+
+def apply_feeddown(Y, labels, didx, path, corr=None, *, system=None):
     """Add SMASH-omitted weak/e.m. feed-down to model dN_dy columns, in place on a copy of Y.
     For each species in FEEDDOWN_CORR, multiply its dN_dy columns by (1 + parent/reference) per
     (design, centrality), using |eta|<2 inventory multiplicities from `path`. Parent and reference
@@ -508,7 +557,7 @@ def apply_feeddown(Y, labels, didx, path, corr=None):
     corr = FEEDDOWN_CORR if corr is None else corr
     if not corr:
         return Y
-    check_system_meta(path)
+    check_system_meta(path, system=system)
     z = read_npz(path)
     fL = [str(x) for x in z["feature_labels"]]
     fY = np.asarray(z["Y"], float)
@@ -661,20 +710,23 @@ def _assemble_vs_mult(spec, val, err, elo, ehi, floor, data_dir, cols, errcols, 
         raise ValueError(f"{spec['name']}: no data point inside the model multiplicity range")
 
 
-def check_flow_fallback(matrix_path, slabels, didx, max_frac=None):
+def check_flow_fallback(matrix_path, slabels, didx, max_frac=None, *, system=None, profile=None,
+                        data_spec=None):
     """OO_PROFILE matrices only: hard-error if the k=1 same-sample flow fallback carries more than
     `max_frac` (default FLOW_FALLBACK_MAX) of the pair weight in any model bin inside a FITTED flow
     data bin, for any design. Reads the per-design, per-bin charged_flow_sample_usage written by the
     matrix aggregation step."""
     max_frac = FLOW_FALLBACK_MAX if max_frac is None else max_frac
-    if PROFILE != OO_PROFILE:
+    profile = PROFILE if profile is None else profile
+    specs = DATA_SPEC if data_spec is None else data_spec
+    if profile != OO_PROFILE:
         return
-    flow_names = {s["name"] for s in DATA_SPEC if s["kind"] == "flow"}
+    flow_names = {s["name"] for s in specs if s["kind"] == "flow"}
     fitted = [tuple(float(x) for x in l.split("__")[1].split("_")) for l in slabels
               if l.split("__")[0] in flow_names]
     if not fitted:
         return
-    meta = check_system_meta(matrix_path, profile=PROFILE)
+    meta = check_system_meta(matrix_path, system=system, profile=profile)
     usage = meta.get("charged_flow_sample_usage")
     if usage is None:
         raise KeyError(f"{os.path.basename(matrix_path)} meta lacks charged_flow_sample_usage "
@@ -706,7 +758,7 @@ def xlabel_for(name):
     return r"$\langle dN_{\rm ch}/d\eta\rangle$" if name.endswith("_vs_mult") else r"% centrality"
 
 
-def assemble(Y, Yerr, labels, data_dir, drop_specs=()):
+def assemble(Y, Yerr, labels, data_dir, drop_specs=(), *, data_spec=None):
     """Match model observables (already on STAR-style centrality edges) to the STAR/PHENIX
     data bins and build the model design matrix + matched data vector. A data bin spanning
     several model bins is aggregated (yields: width-weighted mean; <pT>: (width*dN_dy)-weighted;
@@ -716,11 +768,12 @@ def assemble(Y, Yerr, labels, data_dir, drop_specs=()):
     Returns (Ystar, Ystar_e, y_data, sig_data, labels, valid_designs); valid masks designs that
     are NaN-free across all kept observables (c_n{2} is NaN-free, so this now drops ~nothing)."""
     val, err, elo, ehi = build_lookup(Y, Yerr, labels)
+    specs = DATA_SPEC if data_spec is None else data_spec
     drop = set(drop_specs)
-    unknown = drop - {s["name"] for s in DATA_SPEC}
+    unknown = drop - {s["name"] for s in specs}
     if unknown:
         raise ValueError(f"drop_specs not in DATA_SPEC: {sorted(unknown)}")
-    assumed = [s["name"] for s in DATA_SPEC
+    assumed = [s["name"] for s in specs
                if s["name"] not in drop and s.get("uncertainty_status") in ("assumed", "mixed")]
     if assumed:
         warnings.warn("Preliminary O-O inputs use assumed uncertainties for some or all points "
@@ -728,7 +781,7 @@ def assemble(Y, Yerr, labels, data_dir, drop_specs=()):
                       "digitized totals with a reading margin. See data/OO5360.md and the supplied dataset notes.",
                       UserWarning, stacklevel=2)
     cols, errcols, ydata, sdata, lab = [], [], [], [], []
-    for spec in DATA_SPEC:
+    for spec in specs:
         if spec["name"] in drop:
             continue
         sp, ob, kind = spec["species"], spec["obs"], spec["kind"]
@@ -849,10 +902,14 @@ class PCAGPEmulator:
 # ============================================================
 # Closure
 # ============================================================
+def kfold_splits(n, n_splits=8, seed=SEED):
+    """(train, held-out) row positions of the closure folds; shared so held-out order is defined once."""
+    return list(KFold(n_splits=n_splits, shuffle=True, random_state=seed).split(np.arange(n)))
+
+
 def kfold_closure(X, Y, n_splits=8, seed=SEED):
-    kf = KFold(n_splits=n_splits, shuffle=True, random_state=seed)
     t, p, s = [], [], []
-    for tr, te in kf.split(X):
+    for tr, te in kfold_splits(len(X), n_splits, seed):
         emu = PCAGPEmulator(X[tr], Y[tr])
         m, sd = emu.predict(X[te], return_std=True)
         t.append(Y[te]); p.append(m); s.append(sd)
@@ -881,6 +938,46 @@ def closure_report(t, p, s, labels, prefix, make_plots=True):
     xs = np.linspace(-4, 4, 200); ax[1].plot(xs, np.exp(-xs**2/2)/np.sqrt(2*np.pi), "k-")
     ax[1].set_title(f"z mean={zz.mean():.2f} std={zz.std():.2f}")
     fig.tight_layout(); fig.savefig(f"{prefix}_closure.pdf"); plt.close(fig)
+
+
+def emulator_settings():
+    """Serializable PCA/GP constructor settings for saved-likelihood reconstruction."""
+    return dict(var_threshold=PCA_VAR_THRESHOLD, npc_max=NPC_MAX, alpha=GP_ALPHA,
+                nrestarts=GP_NRESTARTS, seed=SEED)
+
+
+def fit_emulator(inputs, prefix, *, n_splits=8, make_plots=True):
+    """Shared closure, uncertainty calibration and full-grid training for each system."""
+    X, Ystar, slabels, pref = inputs.X, inputs.Y, inputs.labels, str(prefix)
+    print("== closure (k-fold, real design) ==")
+    t, p, s = kfold_closure(X, Ystar, n_splits=n_splits, seed=SEED)
+    rows = np.concatenate([te for _, te in kfold_splits(len(X), n_splits, SEED)])   # stacked row order
+    closure_report(t, p, s, slabels, pref, make_plots=make_plots)
+    lam = np.ones(t.shape[1])
+    if EMU_VAR_CALIBRATE:
+        zc = (p - t) / np.where(s > 0, s, np.nan)
+        lam = np.nanstd(zc, axis=0)
+        bad = ~np.isfinite(lam)
+        if bad.any():
+            print(f"  WARNING: {int(bad.sum())} observable(s) had a non-finite closure z-std "
+                  f"(all-NaN column?) -- falling back to no inflation (1.0) for those: "
+                  f"{[slabels[j] for j in np.where(bad)[0]]}")
+        lam = np.where(bad, 1.0, lam)
+        lam = np.maximum(lam, 1.0)   # floor: only correct documented OVER-confidence, never deflate
+                                      # a column's raw GP uncertainty below what it reported
+        print(f"  emulator variance recalibration: per-observable closure z-std, "
+              f"range [{lam.min():.3f}, {lam.max():.3f}], median {np.median(lam):.3f} "
+              f"-> scaling each observable's predictive std independently (honest per-channel coverage)")
+
+    print("== train emulator (full design) ==")
+    emu = PCAGPEmulator(X, Ystar, var_inflation=lam)
+    print(f"  npc={emu.npc} explains "
+          f"{np.cumsum(emu.pca.explained_variance_ratio_)[emu.npc-1]:.4f}"
+          f"  (var_inflation range [{emu.var_inflation.min():.3f}, {emu.var_inflation.max():.3f}])")
+    if make_plots:
+        pc_spectrum(emu, f"{pref}_PC_spectrum.pdf")
+
+    return emu, dict(truth=t, predicted=p, std=s, var_inflation=lam, rows=rows)
 
 
 # ============================================================
@@ -1148,7 +1245,8 @@ def plot_observable_bands_grid(pred, labels, y_data, sig_data, path, alpha_band=
     fig.tight_layout(); fig.savefig(path); plt.close(fig)
 
 
-def trace_plot(chain, pnames, path, nburn):
+def trace_plot(chain, pnames, path, nburn, labels=None):
+    labels = param_labels() if labels is None else labels
     nsteps, nw, nd = chain.shape
     thin = max(1, nsteps // 400); alpha = min(1.0, 20.0 / nw)
     xs = np.arange(0, nsteps, thin)
@@ -1157,7 +1255,7 @@ def trace_plot(chain, pnames, path, nburn):
     for i, ax in enumerate(axes):
         ax.plot(xs, chain[::thin, :, i], lw=0.4, alpha=alpha)
         ax.axvline(nburn, color="k", ls="--", lw=0.7)
-        ax.set_ylabel(PARAM_LABELS.get(pnames[i], pnames[i]))
+        ax.set_ylabel(labels.get(pnames[i], pnames[i]))
     axes[-1].set_xlabel("Step")
     fig.tight_layout(); fig.savefig(path); plt.close(fig)
 
@@ -1333,13 +1431,14 @@ def enable_oo_yield_proxies():
                               files=[f"../optional/{name}.dat"]))
 
 
-def proxy_measurement_covariance(labels, measured, sigmas, data_dir):
+def proxy_measurement_covariance(labels, measured, sigmas, data_dir, *, data_spec=None):
     """Join the selected submatrix of the reproducible proxy/anchor covariance.
 
     Marginal DAT errors already enter sigmas. Add only off-diagonal terms so the
     normal per-observable model discrepancy floor remains independent.
     """
-    selected = {spec["name"]: spec for spec in DATA_SPEC
+    specs = DATA_SPEC if data_spec is None else data_spec
+    selected = {spec["name"]: spec for spec in specs
                 if any(label.startswith(spec["name"] + "__") for label in labels)}
     if not any(spec.get("assumed_proxy") for spec in selected.values()):
         return None
@@ -1375,31 +1474,52 @@ def proxy_measurement_covariance(labels, measured, sigmas, data_dir):
     return covariance
 
 
-def prepare_inputs(matrix_path=None, design_path=None, data_dir=None, drop_specs=(), feeddown=None):
+def input_settings(system=None, *, data_spec=None, fixed_params=None):
+    """Resolve explicit settings for independent system contexts; legacy callers use globals."""
+    from types import SimpleNamespace
+    if system is None:
+        values = dict(system=SYSTEM, matrix=MATRIX_NPZ, profile=PROFILE, data_dir=DATA_DIR,
+                      norm=SYSTEMS[SYSTEM]["norm"], data_spec=DATA_SPEC, fixed=FIXED_PARAMS,
+                      feeddown_npz=FEEDDOWN_NPZ, feeddown_corr=FEEDDOWN_CORR)
+    else:
+        values = dict(system_config(system), system=system)
+    if data_spec is not None:
+        values["data_spec"] = data_spec
+    if fixed_params is not None:
+        values["fixed"] = fixed_params
+    return SimpleNamespace(**values)
+
+
+def prepare_inputs(matrix_path=None, design_path=None, data_dir=None, drop_specs=(), feeddown=None,
+                   *, system=None, data_spec=None, fixed_params=None):
     """One input contract shared by preflight, fitting and diagnostic scripts.
 
     The assembly's existing NaN-row exclusion is preserved. Infinite assembled
     values, empty grids and invalid measurements fail before emulator training.
+    An explicit system uses its registry settings without changing the active
+    globals; fixed_params supplies a study's common parameter policy.
     """
     from types import SimpleNamespace
-    matrix_path = MATRIX_NPZ if matrix_path is None else matrix_path
+    settings = input_settings(system, data_spec=data_spec, fixed_params=fixed_params)
+    matrix_path = settings.matrix if matrix_path is None else matrix_path
     design_path = DESIGN_DAT if design_path is None else design_path
-    data_dir = DATA_DIR if data_dir is None else data_dir
-    feeddown = FEEDDOWN_NPZ if feeddown is None else feeddown
-    Y, errors, labels, indices, names = load_matrix(matrix_path)
-    design, active, pnames, ranges = load_design(design_path)
+    data_dir = settings.data_dir if data_dir is None else data_dir
+    feeddown = settings.feeddown_npz if feeddown is None else feeddown
+    Y, errors, labels, indices, names = load_matrix(matrix_path, system=settings.system, profile=settings.profile)
+    design, active, pnames, ranges = load_design(design_path, drop_params=set(NORM_PARAMS) - {settings.norm})
     X = build_X(design, indices, active)
     if feeddown:
-        Y = apply_feeddown(Y, labels, indices, feeddown)
+        Y = apply_feeddown(Y, labels, indices, feeddown, corr=settings.feeddown_corr, system=settings.system)
     grid, grid_errors, measured, sigmas, selected, valid = assemble(
-        Y, errors, labels, data_dir, drop_specs=drop_specs)
-    check_flow_fallback(matrix_path, selected, indices)
+        Y, errors, labels, data_dir, drop_specs=drop_specs, data_spec=settings.data_spec)
+    check_flow_fallback(matrix_path, selected, indices, system=settings.system, profile=settings.profile,
+                        data_spec=settings.data_spec)
     if not valid.any() or not grid.shape[1] or not np.isfinite(grid[valid]).all():
         raise ValueError("No usable finite assembled model grid.")
     if not np.isfinite(measured).all() or not np.all(np.isfinite(sigmas) & (sigmas > 0)):
         raise ValueError("Measurements must be finite with positive finite errors.")
-    resolve_free(pnames, ranges)
-    covariance = proxy_measurement_covariance(selected, measured, sigmas, data_dir)
+    resolve_free(pnames, ranges, fixed_params=settings.fixed)
+    covariance = proxy_measurement_covariance(selected, measured, sigmas, data_dir, data_spec=settings.data_spec)
     return SimpleNamespace(X=X[valid], Y=grid[valid], errors=grid_errors[valid],
                            measured=measured, sigmas=sigmas, labels=selected,
                            covariance=covariance,
@@ -1417,19 +1537,33 @@ def file_identity(path):
     return {"path": str(path), "sha256": digest.hexdigest()}
 
 
-def input_config(matrix_path=None, design_path=None, data_dir=None, drop_specs=(), feeddown=None):
+def physical_input_files(config):
+    """Identities required for plot replay; source-code hashes remain provenance.
+
+    Proxy generation is checked separately against its saved tables, evidence
+    and complete covariance archive by build(check=True) during assembly.
+    Rendering-only edits to that generator must not invalidate identical data.
+    Fit/cache reuse still compares the complete configuration, including code.
+    """
+    return [(entry["role"], entry["sha256"]) for entry in config["files"]
+            if entry["role"] not in ("implementation", "proxy_implementation")]
+
+
+def input_config(matrix_path=None, design_path=None, data_dir=None, drop_specs=(), feeddown=None,
+                 *, system=None, data_spec=None, fixed_params=None):
     """Content-based provenance; changing an input or its metadata invalidates a cache."""
-    matrix = Path(MATRIX_NPZ if matrix_path is None else matrix_path).expanduser().resolve()
+    settings = input_settings(system, data_spec=data_spec, fixed_params=fixed_params)
+    matrix = Path(settings.matrix if matrix_path is None else matrix_path).expanduser().resolve()
     design = Path(DESIGN_DAT if design_path is None else design_path).expanduser().resolve()
-    data = Path(DATA_DIR if data_dir is None else data_dir).expanduser().resolve()
-    feeddown = FEEDDOWN_NPZ if feeddown is None else feeddown
+    data = Path(settings.data_dir if data_dir is None else data_dir).expanduser().resolve()
+    feeddown = settings.feeddown_npz if feeddown is None else feeddown
     files = {"matrix": matrix, "matrix_metadata": matrix.with_suffix(".meta.json"),
              "design": design, "implementation": Path(__file__).resolve()}
-    for spec in DATA_SPEC:
+    for spec in settings.data_spec:
         if spec["name"] not in drop_specs:
             for filename in spec["files"]:
                 files["data/" + filename] = Path(_resolve(str(data / filename))).resolve()
-    proxy_enabled = any(spec.get("assumed_proxy") and spec["name"] not in drop_specs for spec in DATA_SPEC)
+    proxy_enabled = any(spec.get("assumed_proxy") and spec["name"] not in drop_specs for spec in settings.data_spec)
     if proxy_enabled:
         for relative in ("optional/projection_ratios.json", "optional/yield_proxy_metadata.json",
                          "optional/yield_proxy_covariance.npz", "sources/ALI-SIMUL-480342.pdf",
@@ -1442,9 +1576,10 @@ def input_config(matrix_path=None, design_path=None, data_dir=None, drop_specs=(
         files.update(feeddown=inventory, feeddown_metadata=inventory.with_suffix(".meta.json"))
     import scipy
     import sklearn
-    return dict(schema=1, system=SYSTEM, profile=PROFILE, matrix=str(matrix), design=str(design),
+    return dict(schema=1, system=settings.system, profile=settings.profile, matrix=str(matrix), design=str(design),
                 data_dir=str(data), feeddown=str(Path(feeddown).expanduser().resolve()) if feeddown else "",
-                drop_specs=sorted(set(drop_specs)), fixed_params=dict(FIXED_PARAMS),
+                drop_specs=sorted(set(drop_specs)), fixed_params=dict(settings.fixed),
+                shear_mode=selected_shear_mode(settings.fixed),
                 oo_yield_proxies_enabled=proxy_enabled,
                 libraries=dict(numpy=np.__version__, scipy=scipy.__version__, sklearn=sklearn.__version__),
                 files=[dict(role=role, **file_identity(path)) for role, path in sorted(files.items())])
@@ -1510,10 +1645,7 @@ def posterior_inputs(run_dir, system=DEFAULT_SYSTEM, matrix=None, design=None, d
         drop = tuple(cfg["drop_specs"]) if drop_specs is None else drop_specs
         current = input_config(drop_specs=drop, feeddown=cfg["feeddown"])
         # Plot code can evolve; physical inputs and the selected observable set must agree.
-        def physical_files(config):
-            return [(entry["role"], entry["sha256"]) for entry in config["files"]
-                    if entry["role"] != "implementation"]
-        if physical_files(current) != physical_files(cfg) or sorted(drop) != cfg["drop_specs"]:
+        if physical_input_files(current) != physical_input_files(cfg) or sorted(drop) != cfg["drop_specs"]:
             raise ValueError("Plot inputs differ from the saved fit. Use matching files and exclusions.")
         feeddown = cfg["feeddown"]
     else:
@@ -1566,6 +1698,18 @@ def configure_inputs(args, *, system=None):
         enable_oo_yield_proxies()
 
 
+def add_parameter_arguments(parser, *, mode="all"):
+    """Shared parameter policy for fitting, preflight and suite launchers."""
+    parser.add_argument("--parameter-mode", choices=("all", "system", "flat-eta"), default=mode,
+                        help="all: every active parameter sampled before applying the shear choice; "
+                             "system: the system's fixed slice (AuAu200 fixes six parameters); "
+                             "flat-eta: legacy shorthand for all + --shear-mode flat")
+    parser.add_argument("--shear-mode", choices=SHEAR_MODES, default=None,
+                        help="temperature-dependent: use the parameter mode's shear slopes (default); "
+                             "flat: fix eta_low = eta_high = 0 and sample eta_min as constant eta/s. "
+                             "The flat-eta parameter mode defaults to flat.")
+
+
 def validate_run_sizes(nsteps, nburn, nwalkers, nsplits, ndesign=None):
     if nsteps < 4 or nburn < 0 or nwalkers < 4 or nwalkers % 2:
         raise ValueError("Require nsteps >= 4, nburn >= 0, and an even nwalkers >= 4.")
@@ -1598,7 +1742,7 @@ def main(matrix_path=None, design_path=None, data_dir=None,
         raise ValueError("Plot draw counts must be positive integers; corner font scale must be positive and finite.")
     pref = os.path.join(out_dir, OUT_PREFIX)
     print(f"  system : {SYSTEM} (profile {PROFILE})\n  matrix : {matrix_path}\n  design : {design_path}\n"
-          f"  data   : {data_dir}\n  out    : {out_dir}")
+          f"  data   : {data_dir}\n  out    : {out_dir}\n  shear  : {selected_shear_mode()}")
 
     inputs = prepare_inputs(matrix_path, design_path, data_dir, drop_specs, feeddown)
     X, Ystar, pnames, ranges = inputs.X, inputs.Y, inputs.pnames, inputs.ranges
@@ -1608,38 +1752,16 @@ def main(matrix_path=None, design_path=None, data_dir=None,
     validate_run_sizes(nsteps, nburn, nwalkers, n_splits, len(X))
     config = input_config(matrix_path, design_path, data_dir, drop_specs, feeddown)
     config.update(nsteps=nsteps, nburn=nburn, nwalkers=nwalkers, seed=seed, nsplits=n_splits,
+                  emulator_settings=emulator_settings(),
                   emulator_only=emulator_only, usable_design_indices=inputs.indices.tolist(),
                   plotting=dict(enabled=make_plots, npost=plot_npost,
                                 nprior=plot_nprior, corner_font_scale=corner_font_scale, seed=0))
     os.makedirs(out_dir, exist_ok=True)
     Path(f"{pref}_run.json").write_text(json.dumps(config, indent=2) + "\n")
 
-    print("== closure (k-fold, real design) ==")
-    t, p, s = kfold_closure(X, Ystar, n_splits=n_splits)
-    closure_report(t, p, s, slabels, pref, make_plots=make_plots)
-    lam = np.ones(t.shape[1])
-    if EMU_VAR_CALIBRATE:
-        zc = (p - t) / np.where(s > 0, s, np.nan)
-        lam = np.nanstd(zc, axis=0)
-        bad = ~np.isfinite(lam)
-        if bad.any():
-            print(f"  WARNING: {int(bad.sum())} observable(s) had a non-finite closure z-std "
-                  f"(all-NaN column?) -- falling back to no inflation (1.0) for those: "
-                  f"{[slabels[j] for j in np.where(bad)[0]]}")
-        lam = np.where(bad, 1.0, lam)
-        lam = np.maximum(lam, 1.0)   # floor: only correct documented OVER-confidence, never deflate
-                                      # a column's raw GP uncertainty below what it reported
-        print(f"  emulator variance recalibration: per-observable closure z-std, "
-              f"range [{lam.min():.3f}, {lam.max():.3f}], median {np.median(lam):.3f} "
-              f"-> scaling each observable's predictive std independently (honest per-channel coverage)")
-
-    print("== train emulator (full design) ==")
-    emu = PCAGPEmulator(X, Ystar, var_inflation=lam)
-    print(f"  npc={emu.npc} explains "
-          f"{np.cumsum(emu.pca.explained_variance_ratio_)[emu.npc-1]:.4f}"
-          f"  (var_inflation range [{emu.var_inflation.min():.3f}, {emu.var_inflation.max():.3f}])")
-    if make_plots:
-        pc_spectrum(emu, f"{pref}_PC_spectrum.pdf")
+    emu, _ = fit_emulator(inputs, pref, n_splits=n_splits, make_plots=make_plots)
+    config["emulator_variance_inflation"] = emu.var_inflation.tolist()
+    Path(f"{pref}_run.json").write_text(json.dumps(config, indent=2) + "\n")
 
     if emulator_only:
         print(f"  emulator validation complete; run settings: {pref}_run.json"); return
@@ -1659,6 +1781,7 @@ def main(matrix_path=None, design_path=None, data_dir=None,
                                             cov_data=getattr(inputs, "covariance", None)),
                               u0, nburn + nsteps, a=SAMPLER_A, p_de=SAMPLER_P_DE, rng=rng)
     chain = theta_from_u(chain_u, free_ranges)   # back to theta for diagnostics/plots/everything below
+    del chain_u                                  # same size as chain; not needed past this point
     samp = chain[nburn:].reshape(-1, len(free_names))
     print(f"  drew {samp.shape[0]} post-burn samples")
     diagnostics = mcmc_diagnostics(chain[nburn:], free_names)
@@ -1716,18 +1839,17 @@ def selftest():
     return ok
 
 
-def cli(argv=None, *, mode="all", out_dir=None, nsteps=NSTEPS, auau_only=False):
+def cli(argv=None, *, mode="all", out_dir=None, nsteps=NSTEPS, auau_only=False, require_flat=False):
     """Common fitting CLI, also used by the flat-viscosity launcher.
 
     Defaults are each system's primary analysis: all active parameters sampled,
     the system's primary observable exclusions, and no feed-down correction.
+    require_flat rejects any parameter selection that does not fix both shear slopes at zero.
     """
     ap = argparse.ArgumentParser(description="Standalone emulator and Bayesian inference",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     add_input_arguments(ap, system=not auau_only, proxies=not auau_only)
-    ap.add_argument("--parameter-mode", choices=("all", "system", "flat-eta"), default=mode,
-                    help="all: every active parameter sampled; system: the system's fixed slice "
-                         "(AuAu200 fixes six parameters); flat-eta: both shear slopes fixed at zero")
+    add_parameter_arguments(ap, mode=mode)
     ap.add_argument("--out-dir", default=out_dir, help="Output directory (default: selected system).")
     ap.add_argument("--emulator-only", action="store_true", help="Validate/train without sampling.")
     ap.add_argument("--selftest", action="store_true", help="Run synthetic closure without external inputs.")
@@ -1740,14 +1862,12 @@ def cli(argv=None, *, mode="all", out_dir=None, nsteps=NSTEPS, auau_only=False):
     a = ap.parse_args(argv)
     if a.selftest:
         return 0 if selftest() else 1
-    configure_inputs(a, system="AuAu200" if auau_only else None)
-    global FIXED_PARAMS
-    if a.parameter_mode == "all":
-        FIXED_PARAMS = {}
-    elif a.parameter_mode == "flat-eta":
-        FIXED_PARAMS = {"eta_low": 0.0, "eta_high": 0.0}
-        PARAM_LABELS["eta_min"] = r"$\eta/s$"
     try:
+        configure_inputs(a, system="AuAu200" if auau_only else None)
+        configure_parameters(a.parameter_mode, a.shear_mode)
+        if require_flat and selected_shear_mode() != "flat":
+            raise ValueError("this launcher requires flat shear (eta_low = eta_high = 0); "
+                             "use inference.py for temperature-dependent shear")
         main(matrix_path=MATRIX_NPZ, design_path=DESIGN_DAT, data_dir=DATA_DIR,
              out_dir=a.out_dir, emulator_only=a.emulator_only, nsteps=a.nsteps,
              nburn=a.nburn, nwalkers=a.nwalkers, seed=a.seed, drop_specs=drop_selection(a),

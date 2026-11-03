@@ -21,7 +21,7 @@ Terms used throughout the code, logs and documentation, in workflow order.
 | Term | Meaning |
 |---|---|
 | Design, design point | One row of the design table: one choice of model parameters. Row *n* lives in `design_NNN/` (zero-based) |
-| Design table | `config/initialization/design_params_combined500.dat`, the 500 parameter rows shared by generation and inference |
+| Design table | `inference/model/design_params_combined500.dat`, the 500 parameter rows shared by generation and inference; the old `config/initialization/` path links to this file |
 | System | Collision species and energy, e.g. `AuAu200`, `OO5360`; one subdirectory per design |
 | Bundle | A design's `parameters.dat`, `music_input` and `initial.hdf`, written once at initialization |
 | Hydro event, event | One initial condition and its MUSIC evolution, in a numbered event directory such as `0042/` |

@@ -41,8 +41,8 @@ def local_only(path):
         return False
     return (
         parts[0] in LOCAL_ROOTS
-        or parts[0].startswith('multisystem-calibration-paper')
-        or path.startswith('config/users/')
+        or parts[0].startswith(('multisystem-calibration-paper', 'multisystem-calibration-dissertation-'))
+        or path.startswith(('config/users/', 'inference/studies/'))
         or path in LEGACY_FILES
         or any(part in {'.venv', 'venv', '__pycache__', '.matplotlib', '.pytest_cache'} for part in parts)
         or any(part == '.env' or (part.startswith('.env.') and part != '.env.example') for part in parts)

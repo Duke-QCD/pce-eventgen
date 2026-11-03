@@ -1,6 +1,6 @@
 # Measurement inputs
 
-The public repository bundles AuAu200 reference measurements and an [O-O input schema](OO5360.md), not O-O study measurements or evidence. The synthetic walkthrough uses the AuAu200 reference tables and a generated model matrix. Supply your own measurements through `--data-dir` while preserving the selected adapter's file layout. Keep personal datasets in an external directory or ignored `config/users/<study>/`.
+The public repository bundles AuAu200 reference measurements and an [O-O input schema](OO5360.md), not O-O study measurements or evidence. The synthetic walkthrough uses the AuAu200 reference tables and a generated model matrix. Supply your own measurements through `--data-dir` while preserving the selected adapter's file layout. Keep personal datasets in an external directory or ignored `studies/<study>/` inside the inference folder.
 
 Available reference inputs:
 

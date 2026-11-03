@@ -80,6 +80,35 @@ class SavedSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Plot inputs differ"):
             I.posterior_inputs(self.optional, "OO5360")
 
+    def test_plot_replay_allows_code_updates_but_cache_reuse_stays_strict(self):
+        original = I.file_identity
+        changed = {I.ROOT/'inference.py', I.ROOT/'build_oo_yield_proxies.py'}
+
+        def edited_code(path):
+            result = original(path)
+            if Path(result['path']) in changed:
+                result['sha256'] = '0'*64
+            return result
+
+        with mock.patch.object(I, 'file_identity', side_effect=edited_code):
+            post, _, _ = I.posterior_inputs(self.optional, 'OO5360')
+            current = I.input_config(drop_specs=(), feeddown='')
+        with self.assertRaisesRegex(ValueError, 'different input/settings provenance'):
+            I.require_cache_config(post, current)
+
+    def test_plot_replay_still_checks_covariance_anchor_evidence_and_metadata(self):
+        for relative in ('optional/yield_proxy_covariance.npz', 'optional/yield_proxy_metadata.json',
+                         'optional/projection_ratios.json', 'derived/dN_dy_K0S_vs_mult.dat',
+                         'uncertainties/dN_dy_K0S_vs_mult.json', 'sources/ALI-SIMUL-480342.pdf'):
+            path = self.data.parent/relative
+            original = path.read_bytes()
+            try:
+                path.write_bytes(b'changed physical input')
+                with self.subTest(input=relative), self.assertRaisesRegex(ValueError, 'Plot inputs differ'):
+                    I.posterior_inputs(self.optional, 'OO5360')
+            finally:
+                path.write_bytes(original)
+
     def test_primary_replay_clears_previous_optional_selection(self):
         I.posterior_inputs(self.optional, "OO5360")
         I.posterior_inputs(self.primary, "OO5360")

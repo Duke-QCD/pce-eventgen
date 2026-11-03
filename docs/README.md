@@ -18,6 +18,7 @@ This repository simulates relativistic heavy-ion collisions with a custom TRENTo
 | Understand or change an INI setting | [Configuration reference](reference/configuration.md) |
 | Select executables, data, archives, or thread counts | [Environment reference](reference/environment.md) |
 | Change physics parameters or model input options | [Physics and model inputs](reference/physics.md) |
+| Generate, subset, or inspect a parameter design table | [Create a parameter design](../inference/DESIGN.md) |
 | Identify an output file, marker, or archive | [Files and event states](reference/files.md) |
 | Diagnose installation, event, cache, or analysis failures | [Troubleshooting](troubleshooting.md) |
 | Locate a script or understand the source tree | [Repository maintenance guide](repository.md) |

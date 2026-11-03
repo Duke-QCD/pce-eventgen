@@ -18,9 +18,7 @@ def plot_from_samples(samples, pnames, ranges, prefix, *, font_scale=I.CORNER_FO
     """Render dissertation full/group corners directly from samples, without fitting or global changes."""
     if not np.isfinite(font_scale) or font_scale <= 0:
         raise ValueError("Font scale must be finite and positive.")
-    labels = {**engine.PARAM_LABELS, **PAPER_LABELS}
-    if engine.FIXED_PARAMS.get("eta_low") == 0.0 and engine.FIXED_PARAMS.get("eta_high") == 0.0:
-        labels["eta_min"] = r"$\eta/s$"
+    labels = I.param_labels(engine.FIXED_PARAMS, {**engine.PARAM_LABELS, **PAPER_LABELS})
     rc = dict(engine.POSTERIOR_RC)
     for k in ("font.size", "legend.fontsize", "axes.labelsize", "axes.titlesize",
               "xtick.labelsize", "ytick.labelsize"):

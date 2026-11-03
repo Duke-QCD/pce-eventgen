@@ -8,12 +8,18 @@ fixed reference across fugacity values; a constant eta/s is the only shape invar
 Both slopes are CONDITIONED at 0 in the full emulator (0 is interior to both priors), so this is
 the slopes=0 slice of the 14-D primary (inference.py --system AuAu200): same matrix, likelihood,
 observable set, kernel and inflation, 12 free params. With both slopes 0 the kink temperature drops out and
-eta_min IS the constant eta/s (relabelled below).
+eta_min IS the constant eta/s (figures label it eta/s). Parameter selections that would not fix
+both slopes at zero (e.g. --parameter-mode all without --shear-mode flat) are rejected.
 
     python run_flat_eta.py [--out-dir DIR] [--nsteps N]
+
+The general inference.py launcher supports either collision system with
+--shear-mode flat or --shear-mode temperature-dependent, using its normal
+sampling budget. This convenience launcher retains its Au-Au defaults.
 """
 import inference as I
 
 
 if __name__ == "__main__":
-    raise SystemExit(I.cli(mode="flat-eta", out_dir="plots_AuAu200_flat_eta", nsteps=2 * I.NSTEPS, auau_only=True))
+    raise SystemExit(I.cli(mode="flat-eta", out_dir="plots_AuAu200_flat_eta", nsteps=2 * I.NSTEPS,
+                           auau_only=True, require_flat=True))

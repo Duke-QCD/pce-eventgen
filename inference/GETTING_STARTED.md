@@ -1,6 +1,6 @@
 # A first small inference run
 
-Follow synthetic inputs → checks → emulator closure → a short posterior fit and figures. You need only the inference environment and checkout; allow a few minutes, including plotting.
+Follow synthetic inputs → checks → emulator closure → a short posterior fit and figures. You need only the inference environment and this folder; allow a few minutes, including plotting.
 
 The model values are **synthetic toy functions**, compared with real AuAu200 measurements only to test interfaces. Posteriors and closure scores here have no physics interpretation.
 
@@ -115,6 +115,6 @@ Short sampling still trains on every usable real design. Use adequate production
 
 For your own inputs, continue with the [production workflow](PRODUCTION.md). It covers supplied matrix/design/measurement paths, preserved logs, convergence review and the standard plotting commands. Dataset-specific selections are described separately with the relevant measurements.
 
-Use `--help` or the [flag index](../docs/reference/cli-inference.md) for options. Preserve saved-run inputs for predictive regeneration; use fresh directories for repeat exercises.
+Use `--help` or the [flag index](CLI.md) for options. Preserve saved-run inputs for predictive regeneration; use fresh directories for repeat exercises.
 
 Next, follow the [small robustness and leave-one-out scan walkthrough](SCANS.md) to test observable exclusions, injected-truth recovery and checked resume.

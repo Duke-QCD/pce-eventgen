@@ -196,7 +196,7 @@ Showcase overwrites selected cases rather than implementing aggregate resume. Ke
 
 ## Defaults and production use
 
-Run `python SCRIPT.py --help` or search the [flag index](../docs/reference/cli-inference.md) for accepted options.
+Run `python SCRIPT.py --help` or search the [flag index](CLI.md) for accepted options.
 
 | Option / behavior | Robustness | Aggregate LOO | Showcase LOO |
 |---|---|---|---|

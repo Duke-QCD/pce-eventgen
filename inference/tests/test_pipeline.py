@@ -37,7 +37,7 @@ import plot_loo_closure as P
 import plot_showcase_overlay as Q
 import plot_style as T
 
-DEFAULT_DESIGN = str(ROOT.parent / "config/initialization/design_params_combined500.dat")
+DEFAULT_DESIGN = str(ROOT / "model/design_params_combined500.dat")
 
 
 def make_grid(directory):
@@ -73,7 +73,9 @@ class PipelineTests(unittest.TestCase):
         # Exercise real PCA/GP training and sampling through each public launcher.
         # Defaults are the primary analysis: primary exclusions, no feed-down, all parameters.
         for script, mode, extra in (("inference.py", "system", ["--parameter-mode", "system"]),
-                                    ("inference.py", "all", []), ("run_flat_eta.py", "flat", [])):
+                                    ("inference.py", "all", []), ("run_flat_eta.py", "flat", []),
+                                    ("inference.py", "explicit-flat", ["--shear-mode", "flat"]),
+                                    ("inference.py", "explicit-temperature", ["--shear-mode", "temperature-dependent"])):
             output = cls.work / mode
             command = [sys.executable, str(ROOT / script), "--matrix", str(cls.matrix), *extra,
                        "--out-dir", str(output), "--nburn", "2", "--nsteps", "8",
@@ -106,7 +108,9 @@ class PipelineTests(unittest.TestCase):
 
     def test_launchers_save_correct_slice_and_no_figures(self):
         for mode, dimension, fixed in (("system", 8, I.FIXED_PARAMS_AUAU),
-                                       ("all", 14, {}), ("flat", 12, {"eta_low": 0., "eta_high": 0.})):
+                                       ("all", 14, {}), ("flat", 12, {"eta_low": 0., "eta_high": 0.}),
+                                       ("explicit-flat", 12, {"eta_low": 0., "eta_high": 0.}),
+                                       ("explicit-temperature", 14, {})):
             with self.subTest(mode=mode):
                 output = self.fits[mode]
                 post = I.restore_posterior(output / "auau_posterior.npz")
@@ -114,10 +118,25 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(I.FIXED_PARAMS, fixed)
                 self.assertFalse(list(output.glob("*.pdf")))
                 config = json.loads(str(post["config_json"]))
+                self.assertEqual(config["shear_mode"], "flat" if "flat" in mode else "temperature-dependent")
                 self.assertEqual(config["usable_design_indices"], self.arrays["design_index"].tolist())
                 self.assertEqual(config["nburn"], 2)
                 diagnostics = json.loads((output / "auau_diagnostics.json").read_text())
                 self.assertFalse(diagnostics["converged"])  # Tiny chains cannot pass production ESS.
+
+    def test_explicit_shear_toggle_preserves_legacy_posteriors(self):
+        for original, explicit in (("flat", "explicit-flat"), ("all", "explicit-temperature")):
+            with self.subTest(explicit=explicit):
+                before = I.read_npz(self.fits[original] / "auau_posterior.npz")
+                after = I.read_npz(self.fits[explicit] / "auau_posterior.npz")
+                np.testing.assert_array_equal(before["samples"], after["samples"])
+
+    def test_flat_preflight_reports_conditioned_emulator_and_sampled_count(self):
+        run = subprocess.run([sys.executable, str(ROOT / "check_inputs.py"), "--matrix", str(self.matrix),
+                              "--shear-mode", "flat"], cwd=self.work, capture_output=True, text=True, timeout=30)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("Active emulator parameters: 14; sampled parameters: 12", run.stdout)
+        self.assertIn("Shear mode: flat", run.stdout)
 
     def test_noncontiguous_design_alignment(self):
         prepared = self.prepared()
@@ -493,6 +512,14 @@ class PipelineTests(unittest.TestCase):
                 self.assertEqual(O.main(["--out-root", str(output)]), 1)
             self.assertEqual(run.call_count, 3)
             self.assertEqual(run.call_args.args[0][0], sys.executable)
+
+    def test_oo_suite_forwards_shear_toggle(self):
+        output = self.work / "suite-flat"
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.assertEqual(O.main(["--dry-run", "--out-root", str(output), "--shear-mode", "flat"]), 0)
+        self.assertEqual(stdout.getvalue().count("--shear-mode flat"), 3)
+        self.assertFalse(output.exists())
 
     def test_robustness_reports_unexpected_failure(self):
         with mock.patch.object(R.I, "main", side_effect=RuntimeError("fit failed")):

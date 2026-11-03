@@ -30,6 +30,10 @@ The archive is a GitHub release asset, separate from the Git checkout. On NERSC,
 | [`inference/`](inference/README.md) | Standalone emulator and Bayesian inference, with its own environment |
 | `tools/`, `tests/` | Repository checks, data checksums, documentation generator and tests |
 
+The [joint calibration workflow](inference/JOINT.md) combines AuAu200 and OO5360 with shared physics parameters, separate energy normalizations and a flat/temperature-dependent shear-viscosity toggle.
+
+To start a new campaign, [create a parameter design](inference/DESIGN.md) with the self-contained Latin-hypercube generator, optional subset/remainder selection, and coverage inspector in `inference/`.
+
 ## Checks
 
 From the repository root:

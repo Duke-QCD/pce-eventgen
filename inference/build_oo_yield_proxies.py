@@ -276,9 +276,11 @@ def make_review(root, evidence, metadata, archive):
     header=190
     overlay=Image.new('RGB',(source.width,source.height+header+140),'white')
     overlay.paste(source,(0,header)); draw=ImageDraw.Draw(overlay)
-    fonts='/usr/share/fonts/truetype/liberation2/'
-    title=ImageFont.truetype(fonts+'LiberationSans-Bold.ttf',42)
-    small=ImageFont.truetype(fonts+'LiberationSans-Regular.ttf',31)
+    # Matplotlib distributes these fonts, so review rendering does not depend on
+    # a Linux-specific system-font directory being installed.
+    fonts=Path(matplotlib.get_data_path())/'fonts/ttf'
+    title=ImageFont.truetype(str(fonts/'DejaVuSans-Bold.ttf'),42)
+    small=ImageFont.truetype(str(fonts/'DejaVuSans.ttf'),31)
     draw.text((25,20),'ALI-SIMUL-480342: digitized O-O projection (NOT data)',fill='#172b3a',font=title)
     draw.text((25,80),'Blue: R_S = 2 K0S / (pi+ + pi-)    Orange: 6 x R_p = 6 (p + pbar) / (pi+ + pi-)',
               fill='#172b3a',font=small)

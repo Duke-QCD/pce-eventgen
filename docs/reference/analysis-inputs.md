@@ -4,6 +4,8 @@
 
 This reference describes the files passed from cache analysis to inference: the observable matrix, its per-event source artifacts, and the optional inventory-derived feed-down table. It explains their labels, uncertainties, alignment and acceptance conventions. For a first fit, follow the [small inference walkthrough](../../inference/GETTING_STARTED.md).
 
+The self-contained [inference input contract](../../inference/INPUTS.md) describes consumption of these products without the surrounding event-generation code.
+
 Use each product's metadata and the current campaign audit for actual design counts, species, bins and analysis profile.
 
 ## Matrix files and design alignment

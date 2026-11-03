@@ -18,6 +18,8 @@ Activate the same profile in every shell/allocation. Activation sets `REPO`, `CF
 
 Inspect the INI: generated profiles select row 0, enable initialization and applied repairs/archive finalization, and protect existing designs. Use [setup's resource/bin overrides](../nersc/SETUP.md#6-run-the-isolated-two-event-smoke-campaign) for smoke runs.
 
+**Check node count and walltime before every submission.** Defaults, saved profile settings and example allocations are starting points; size them for the actual workload. For generation, set `[submit] nodes` and `time` or pass `--nodes` and `--time`, then inspect the preview. Cache jobs use separate `[cache]` settings; interactive work uses the resources requested with `salloc`.
+
 Append `--help` to a command for its backend options, for example `python models/campaign.py cache --help`.
 
 ### 1. Generate or resume events
@@ -116,6 +118,8 @@ python models/campaign.py --config "$CFG" cache --execution local --submit
 Local concurrency is `[cache] jobs`; reserve at least `jobs × nprocs` CPUs on one node. Enter the [compute shell below](#allocations-and-optional-event-filling) before executing: `SLURM_JOB_ID` alone does not place Python on a compute node. Do not overlap manifests on the same cache/design paths.
 
 ### 4. Review, then optionally reap
+
+`review` counts only design/system points with cache or reap verdict records in `[pipeline] record_dir`. Generation jobs do not create these records, so points awaiting their first cache verdict are absent from review even when their raw events exist. Use `status` for the campaign inventory and remaining event counts, and `prepare-cache` to select completed raw points. For example, a 500-point campaign can show 495 points in review while five await caching.
 
 ```bash
 python models/campaign.py --config "$CFG" review --details

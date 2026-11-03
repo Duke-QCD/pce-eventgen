@@ -1,4 +1,6 @@
 """O-O input/likelihood contracts using synthetic fixtures, without study data."""
+import contextlib
+import io
 import json
 import os
 from pathlib import Path
@@ -71,6 +73,29 @@ class OOInputTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "analysis_profile"):
             I.prepare_inputs(matrix, data_dir=data, drop_specs=(), feeddown="")
 
+    def test_oo_cli_samples_both_shear_choices_and_replays_fixed_slice(self):
+        matrix, data = self.charged_grid()
+        original = I.read_npz(matrix)
+        indices = np.array([2, 0, 1, 7, 3, 6, 4, 5])
+        design, _, _, _ = I.load_design(I.DESIGN_DAT)
+        values = original['Y'][:1] * (1 + .1 * design[indices, 4, None])
+        np.savez(matrix, **(original | dict(Y=values, Y_err=.01*values,
+                 design_index=indices, design_name=np.array([f'design_{i:03d}' for i in indices]))))
+        meta = json.loads(matrix.with_suffix('.meta.json').read_text())
+        bins = meta['charged_flow_sample_usage'][0]['bins']
+        meta['charged_flow_sample_usage'] = [dict(design_index=int(i), bins=bins) for i in indices]
+        matrix.with_suffix('.meta.json').write_text(json.dumps(meta))
+        for mode, count in [('flat', 12), ('temperature-dependent', 14)]:
+            output = self.root / mode
+            with self.subTest(mode=mode), contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(I.cli(['--system', 'OO5360', '--shear-mode', mode,
+                                       '--out-dir', str(output), '--no-plots', '--nsteps', '8',
+                                       '--nburn', '2', '--nwalkers', '4', '--nsplits', '2']), 0)
+                post, _, _ = I.posterior_inputs(output, system='OO5360')
+            self.assertEqual(post['samples'].shape, (32, count))
+            self.assertEqual(I.selected_shear_mode(), mode)
+            self.assertEqual(json.loads(str(post['config_json']))['shear_mode'], mode)
+
     def test_proxy_opt_in_is_system_scoped_and_idempotent(self):
         I.use_system('OO5360');baseline=len(I.DATA_SPEC)
         I.enable_oo_yield_proxies();I.enable_oo_yield_proxies()
@@ -79,6 +104,18 @@ class OOInputTests(unittest.TestCase):
         self.assertFalse(any(s.get('assumed_proxy') for s in I.DATA_SPEC))
         with self.assertRaisesRegex(ValueError, 'only for OO5360'):
             I.enable_oo_yield_proxies()
+
+    def test_proxy_opt_in_for_auau_exits_cleanly_from_both_launchers(self):
+        import check_inputs as C
+        argv = ['--system', 'AuAu200', '--oo-yield-proxies']
+        for launcher in (I.cli, C.main):
+            stderr = io.StringIO()
+            with self.subTest(launcher=launcher.__module__), mock.patch.object(I, 'main') as fit, \
+                    contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit) as caught:
+                launcher(argv)
+            self.assertEqual(caught.exception.code, 1)
+            self.assertIn('only for OO5360', stderr.getvalue())
+            fit.assert_not_called()
 
     def test_proxy_interpolation_refuses_extrapolation_and_invalid_coordinates(self):
         for source, target in [([1, 10], [.9]), ([1, 10], [11]), ([10, 1], [2]),

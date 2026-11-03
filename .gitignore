@@ -14,6 +14,7 @@ __pycache__/
 # Manuscript drafts and their exported source bundles remain local.
 /multisystem-calibration-paper/
 /multisystem-calibration-paper-*
+/multisystem-calibration-dissertation-*
 
 # Personal scratch space, assistant settings and credentials.
 /personal/

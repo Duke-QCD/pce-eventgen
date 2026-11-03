@@ -311,13 +311,13 @@ Declared subcommands: <code>code</code> — Copy source with rsync; preview by d
 
 | Argument / flag | Parser context | Declaration | Meaning | Source |
 |---|---|---|---|---|
-| <code>--source</code> | <code>code</code> | <code>type=Path; default=ROOT</code> | Complete local source tree (default: this checkout). | [line 153](../../nersc/stage.py#L153) |
-| <code>--destination</code> | <code>code</code> | <code>required=True</code> | Local directory or USER@HOST:directory; remote paths may be home-relative or absolute. Parent must exist. | [line 154](../../nersc/stage.py#L154) |
-| <code>--apply</code> | <code>code</code> | <code>action=store_true</code> | Copy files; default is an rsync dry run (connects to remote host). | [line 155](../../nersc/stage.py#L155) |
-| <code>--is3d-source</code> | <code>data</code> | <code>type=Path; required=True</code> | Complete approved iS3D data root, including production coefficients. | [line 157](../../nersc/stage.py#L157) |
-| <code>--eos-source</code> | <code>data</code> | <code>type=Path; required=True</code> | Approved EOS directory containing 0.dat through 29.dat. | [line 158](../../nersc/stage.py#L158) |
-| <code>--data-root</code> | <code>data</code> | <code>type=Path; required=True</code> | New local CFS data root; refuses an existing path. | [line 159](../../nersc/stage.py#L159) |
-| <code>--apply</code> | <code>data</code> | <code>action=store_true</code> | Copy and verify data; default checks sources and prints the plan. | [line 160](../../nersc/stage.py#L160) |
+| <code>--source</code> | <code>code</code> | <code>type=Path; default=ROOT</code> | Complete local source tree (default: this checkout). | [line 154](../../nersc/stage.py#L154) |
+| <code>--destination</code> | <code>code</code> | <code>required=True</code> | Local directory or USER@HOST:directory; remote paths may be home-relative or absolute. Parent must exist. | [line 155](../../nersc/stage.py#L155) |
+| <code>--apply</code> | <code>code</code> | <code>action=store_true</code> | Copy files; default is an rsync dry run (connects to remote host). | [line 156](../../nersc/stage.py#L156) |
+| <code>--is3d-source</code> | <code>data</code> | <code>type=Path; required=True</code> | Complete approved iS3D data root, including production coefficients. | [line 158](../../nersc/stage.py#L158) |
+| <code>--eos-source</code> | <code>data</code> | <code>type=Path; required=True</code> | Approved EOS directory containing 0.dat through 29.dat. | [line 159](../../nersc/stage.py#L159) |
+| <code>--data-root</code> | <code>data</code> | <code>type=Path; required=True</code> | New local CFS data root; refuses an existing path. | [line 160](../../nersc/stage.py#L160) |
+| <code>--apply</code> | <code>data</code> | <code>action=store_true</code> | Copy and verify data; default checks sources and prints the plan. | [line 161](../../nersc/stage.py#L161) |
 
 ## tools/build_docs.py
 
@@ -327,7 +327,7 @@ Generate source-indexed CLI and model-input references without importing models.
 
 | Argument / flag | Parser context | Declaration | Meaning | Source |
 |---|---|---|---|---|
-| <code>--check</code> | <code>parser</code> | <code>action=store_true</code> | Report stale pages; write nothing. | [line 203](../../tools/build_docs.py#L203) |
+| <code>--check</code> | <code>parser</code> | <code>action=store_true</code> | Report stale pages; write nothing. | [line 218](../../tools/build_docs.py#L218) |
 
 ## tools/check_physics_data.py
 

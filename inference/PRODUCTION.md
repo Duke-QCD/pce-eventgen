@@ -13,18 +13,20 @@ FIT_SYSTEM=AuAu200
 FIT_MATRIX=/absolute/path/to/model_matrix.npz
 FIT_DESIGN=/absolute/path/to/original/design.dat
 FIT_DATA=/absolute/path/to/measurements
+FIT_SHEAR=temperature-dependent  # set to flat for eta_low = eta_high = 0
 
 python check_inputs.py --system "$FIT_SYSTEM" \
+  --shear-mode "$FIT_SHEAR" \
   --matrix "$FIT_MATRIX" --design "$FIT_DESIGN" --data-dir "$FIT_DATA"
 ```
 
-The matrix needs its matching same-stem `.meta.json`. Pair it with the exact original design table; `design_index` selects zero-based design rows even when matrix rows are missing or reordered. Check system/profile compatibility, matched-observable counts, usable designs and skipped bins. The [matrix contract](../docs/reference/analysis-inputs.md) defines labels, errors and metadata.
+The matrix needs its matching same-stem `.meta.json`. Pair it with the exact original design table; `design_index` selects zero-based design rows even when matrix rows are missing or reordered. Check system/profile compatibility, matched-observable counts, usable designs and skipped bins. The [matrix contract](INPUTS.md) defines labels, errors and metadata.
 
 `--data-dir` changes the location of files used by the selected adapter. It does not infer a new observable schema from arbitrary tables. Preserve the expected filenames and any relative sibling-directory layout. The [measurement reference](data/README.md) describes the bundled AuAu200 tables and links the schema for user-supplied O-O data. A new collision system or observable definition needs a reviewed adapter in `inference.py`.
 
 Matched counts depend on the supplied matrix and data; there is no required campaign row count. For multiplicity-space observables, only measurement points inside every retained design's covered range enter. Review those cuts rather than extrapolating or deleting matrix columns needed for weighting.
 
-Keep your own data, configurations and results outside the tracked reference-data directories. An external work directory or ignored `config/users/<study>/` is suitable. Supply its paths through the CLI. The default staged matrices, `plots_*` results and `scan_*` results are also ignored by Git.
+Keep your own data, configurations and results outside the tracked reference-data directories. An external work directory or ignored `studies/<study>/` is suitable. Supply its paths through the CLI. The default staged matrices, `plots_*` results and `scan_*` results are also ignored by Git.
 
 ## Run a fit with a preserved log
 
@@ -36,13 +38,14 @@ printf 'Inference outputs: %s\n' "$FIT_RUNS"
 set -o pipefail
 
 python -u inference.py --system "$FIT_SYSTEM" --parameter-mode all \
+  --shear-mode "$FIT_SHEAR" \
   --matrix "$FIT_MATRIX" --design "$FIT_DESIGN" --data-dir "$FIT_DATA" \
   --out-dir "$FIT_RUNS/primary" \
   --nwalkers 128 --nburn 5000 --nsteps 40000 --nsplits 8 --seed 12345 \
   --corner-font-scale 1.8 2>&1 | tee "$FIT_RUNS/primary.log"
 ```
 
-This samples all active parameters, applies the system's primary measurement exclusions and leaves feed-down off. `--nsteps` counts retained steps per walker, after `--nburn`. A denser corner can use a smaller font scale; this is a rendering choice, not a change to the samples. `pipefail` retains a fitter failure as the pipeline's exit status.
+This applies the system's primary measurement exclusions and leaves feed-down off. Temperature-dependent shear samples all 14 active parameters; flat shear samples 12, conditioning both slopes at zero while `eta_min` supplies the constant eta/s. The toggle works for AuAu200 and OO5360, including `run_oo_suite.py`. Emulator training retains the full design in both modes. `--nsteps` counts retained steps per walker, after `--nburn`. A denser corner can use a smaller font scale; this is a rendering choice, not a change to the samples. `pipefail` retains a fitter failure as the pipeline's exit status.
 
 Full-grid training and sampling may be substantial. The phases are eight-fold emulator closure, full-grid training, MCMC, then plotting. The stock sampler reports after sampling rather than printing per-step progress; `-u` promptly writes available phase messages to the log. Shorter chains or `--no-plots` do not reduce the training-design count.
 
@@ -64,9 +67,33 @@ A successful process exit or the default sampling budget does not guarantee conv
 
 The main CLI does not checkpoint or continue interrupted MCMC. Rerunning with a larger `--nsteps` trains and samples again. Preserve complete inputs and outputs. The flattened posterior is sufficient for corner regeneration, but the CLI does not save the fitted emulator or original pre-burn chain/RNG state for continuation.
 
+## MAP observable plots
+
+`plot_map_observables.py` accepts saved single-system and joint calibrations. It infers the run type and system from the posterior filename; `--system AuAu200` or `--system OO5360` selects a single-system posterior when a directory contains several. It verifies saved inputs and parameter settings, retrains the emulator with its recorded uncertainty calibration, and estimates a MAP by screening posterior draws and refining the best candidates with bounded optimization. It runs no MCMC and generates no new collision simulations.
+
+```bash
+# Single-system fit (Au-Au or O-O is detected):
+python plot_map_observables.py --run-dir plots_auau_primary
+
+# Joint fit: one shared MAP vector, with a figure set for each system:
+python plot_map_observables.py --run-dir plots_joint_auau_oo_flat
+```
+
+The objective is the posterior density in physical parameter coordinates, with the current uniform box prior, the complete Gaussian likelihood normalization and calibrated emulator predictive variance. It contains no logit-coordinate Jacobian. Fixed parameters, including zero shear slopes in flat mode, remain fixed. A vector of marginal posterior medians is not used as the MAP. The finite search produces a numerical estimate; it does not certify a global optimum.
+
+The default search scores up to 1,024 saved posterior draws plus their componentwise median, then refines up to four distinct high-density starts. `--max-samples`, `--starts`, `--maxiter`, `--batch-size` and `--seed` control this work. `map_result.json` records all optimizer exits, the best candidate's convergence status and proximity to prior boundaries. Increase the search budget and compare solutions if convergence is poor or the posterior is multimodal. The source posterior's MCMC convergence still needs separate review.
+
+Results go into a new `map/` directory under the saved run, or a new directory selected by `--out-dir`. Existing output directories are refused. `map_result.json` preserves the full MAP vector, fixed values, input/implementation provenance, emulator reconstruction and each system's likelihood contribution. Each system receives `<prefix>_MAP_observables.npz` containing signed model means, predictive standard deviations, measurements, labels and its projected parameter vector. Figures are `<prefix>_MAP_yields` and `<prefix>_MAP_ptflow`, omitting empty groups. PDF and PNG are written by default; use `--format pdf` or `--format png` for one format.
+
+The curve is the emulator prediction at the MAP. The shaded band shows emulator uncertainty at that fixed point, not posterior parameter uncertainty. Data error bars retain the fit's configured floors and assumed uncertainties. Flow predictions and uncertainty bounds use the same clipped-root display convention as existing summary figures; saved arrays retain signed cumulants.
+
+New fits save GP settings and variance inflation. Older single-system fits with input provenance and a recorded closure-fold count are supported by recomputing closure under current production emulator settings; the script explicitly warns and records that reconstruction. This is an estimate under the reconstructed emulator, not verification that the original numerical likelihood was reproduced. Fits lacking input provenance are rejected. Single-system `--matrix`, `--design`, and `--data-dir`, or joint `--config`, can point to relocated identical inputs; changed data or parameter policies are rejected.
+
 ## Figures from the main fitter
 
 With plots enabled, the fitter produces these families where the selected groups are nonempty:
+
+The prior/posterior observable grids and parameter corners below are the dissertation-style set, generated automatically for both single-system and joint calibrations. Joint fits write observable grids in each system's subdirectory and shared corners at the run root. `--no-plots` disables automatic rendering; it does not select a different plotting style.
 
 | Files | Contents |
 |---|---|
@@ -87,6 +114,10 @@ python regen_corners.py --system "$FIT_SYSTEM" \
 ```
 
 Recorded optional selections and fixed parameters are restored automatically. Replacement input paths must identify identical contents. These commands overwrite their corresponding figures, not the posterior. `make_flow_plots.py --talk` writes larger-label PNGs; its prior display uses one robust 99% band instead of the ordinary nested 68%/95% bands.
+
+MAP and prior/posterior observable grids include every group selected by the saved fit. For O-O, a primary fit and an all-optional fit have different selections: K0S mean pT requires clearing its exclusion, and the correlated pi/K/p yield proxies additionally require `--oo-yield-proxies` when fitting. Point the plotting commands at the all-optional run to show those channels; plotting a primary posterior does not add them. Proxy panels retain their assumed-proxy labels.
+
+Plot replay checks the measurement, matrix, design, evidence and covariance hashes. Updated implementation files do not by themselves invalidate a plot; proxy assembly also reproduces and checks the complete saved proxy outputs. Cache reuse retains the stricter check on implementation hashes as well as physical inputs.
 
 ## Additional emulator validation
 

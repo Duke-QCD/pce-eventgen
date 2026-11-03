@@ -28,7 +28,7 @@ CODE_EXCLUDES = (
     '.git', '.recovery/', '.aws/', '.ssh/', '.codex/', '.agents/',
     '.env', '.env.*', '.netrc', '.pypirc',
     '/personal/', '/private/', '/scratch/',
-    '/multisystem-calibration-paper/', '/multisystem-calibration-paper-*',
+    '/multisystem-calibration-paper/', '/multisystem-calibration-paper-*', '/multisystem-calibration-dissertation-*',
     '.venv/', 'venv/', '__pycache__/', '.pytest_cache/', '.matplotlib/',
     '*.py[cod]', '*.o', '*~', '.DS_Store',
     'build/', 'build-*/',
@@ -44,6 +44,7 @@ CODE_EXCLUDES = (
     '/models/analysis/stats_pilots/', '/models/analysis/stats_*.csv',
     '/models/analysis/osg_vs_nersc.png', '/osg/manifest*.txt',
     '/inference/model/*.npz', '/inference/model/*.meta.json',
+    '/inference/studies/',
     '/inference/plots*', '/inference/scan_*', '/inference/*.log',
 )
 IS3D_FILES = (

@@ -23,6 +23,7 @@ VARIANTS = (
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     I.add_input_arguments(parser, system=False, feeddown=False, drops=False)
+    I.add_parameter_arguments(parser)
     I.add_plot_arguments(parser)
     parser.add_argument("--out-root", type=Path, default=Path("."))
     parser.add_argument("--nsteps", type=int, default=I.NSTEPS)
@@ -33,6 +34,7 @@ def main(argv=None):
     parser.add_argument("--emulator-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true", help="Print commands without writes or fitting.")
     args = parser.parse_args(argv)
+    I.parameter_fixed_params(args.parameter_mode, args.shear_mode, system="OO5360")
     I.validate_run_sizes(args.nsteps, args.nburn, args.nwalkers, args.nsplits)
     if not args.dry_run:
         args.out_root.mkdir(parents=True, exist_ok=True)
@@ -43,7 +45,7 @@ def main(argv=None):
         command = [sys.executable, "-u", str(I.ROOT / "inference.py"), "--system", "OO5360",
                    "--drop-specs", drop, "--out-dir", str(output)]
         for option in ("matrix", "design", "data_dir", "nsteps", "nburn", "nwalkers", "seed", "nsplits",
-                       "plot_npost", "plot_nprior", "corner_font_scale"):
+                       "plot_npost", "plot_nprior", "corner_font_scale", "parameter_mode", "shear_mode"):
             value = getattr(args, option)
             if value is not None:
                 command.extend(("--" + option.replace("_", "-"), str(value)))

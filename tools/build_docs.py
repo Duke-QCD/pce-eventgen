@@ -9,6 +9,7 @@ import argparse
 import ast
 from pathlib import Path
 import re
+import runpy
 import sys
 
 
@@ -122,7 +123,8 @@ def script_section(path):
     shared_inference = path.parent == ROOT / "inference" and any(
         isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
         and isinstance(node.func.value, ast.Name) and node.func.value.id == "I"
-        and node.func.attr in ("cli", "add_input_arguments") for node in ast.walk(tree)
+        and node.func.attr in ("cli", "add_input_arguments", "add_parameter_arguments", "add_plot_arguments")
+        for node in ast.walk(tree)
     )
     if shared_inference:
         lines += ["Uses shared options declared in [inference.py](#inferenceinferencepy). "
@@ -143,6 +145,19 @@ def script_section(path):
 
 def cli_pages():
     for group, (title, patterns) in GROUPS.items():
+        if group == "inference":
+            # Inference owns its documentation and can regenerate it without the
+            # surrounding repository. Keep the handbook's old URL as a pointer.
+            inference_docs = runpy.run_path(str(ROOT / "inference/build_docs.py"))
+            yield inference_docs["OUT"], inference_docs["reference_page"]()
+            yield OUT / "cli-inference.md", (
+                "# Standalone inference command reference\n\n"
+                "The maintained [inference command and flag reference](../../inference/CLI.md) "
+                "lives with the [inference guide](../../inference/README.md). "
+                "Regenerate it with `python inference/build_docs.py`, or run "
+                "`python inference/build_docs.py --check` to check it without writing.\n"
+            )
+            continue
         paths = sorted({p for pattern in patterns for p in ROOT.glob(pattern) if p.is_file()})
         lines = ["# " + title + ": source argument index", "",
                  "[Command guide](commands.md) · [Handbook](../README.md)", "",

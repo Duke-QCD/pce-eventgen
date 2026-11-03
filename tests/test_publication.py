@@ -49,13 +49,19 @@ class PublicationTests(unittest.TestCase):
         return failed, output.getvalue()
 
     def test_deleted_personal_file_still_blocks_publication(self):
-        self.write('config/users/researcher/campaign.ini', 'Personal campaign\n')
+        private = ('config/users/researcher/campaign.ini',
+                   'inference/studies/personal/study.json',
+                   'multisystem-calibration-dissertation-reuse-20261103/sections/results.tex')
+        for name in private:
+            self.write(name, 'Personal campaign\n')
         self.commit()
-        (self.root / 'config/users/researcher/campaign.ini').unlink()
+        for name in private:
+            (self.root / name).unlink()
         self.commit()
         failed, output = self.audit()
         self.assertTrue(failed)
-        self.assertIn('config/users/researcher/campaign.ini', output)
+        for name in private:
+            self.assertIn(name, output)
 
     def test_local_paper_and_results_are_excluded_by_real_ignore_files(self):
         shutil.copy2(ROOT / '.gitignore', self.root / '.gitignore')
@@ -64,8 +70,10 @@ class PublicationTests(unittest.TestCase):
         private = (
             'multisystem-calibration-paper/main.tex',
             'multisystem-calibration-paper-source.zip', '.env.production',
+            'multisystem-calibration-dissertation-reuse-20261103/sections/results.tex',
             'config/users/researcher/campaign.ini', '.aws/credentials',
             'inference/plots_private/chain.npz', 'inference/model/private.npz',
+            'inference/studies/personal/study.json',
         )
         for name in private:
             self.write(name, 'Keep local\n')

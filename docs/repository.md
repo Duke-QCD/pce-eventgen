@@ -23,7 +23,7 @@
 | [`models/iS3D/`](../models/iS3D/README.md) | Customized CPU sampler in `src/cpp/`, particle/coefficient inputs and OSCAR converter |
 | [`models/SMASH/`](../models/SMASH/README.md) | Pinned upstream Git submodule; particle/decay tables are compiled into the executable |
 | [`osg/`](../osg/README.md) | OSG staging, submission, workers, transfer and container build files |
-| [`inference/`](../inference/README.md) | Standalone emulator, Bayesian inference and measurement inputs |
+| [`inference/`](../inference/README.md) | Self-contained design generation, emulator, Bayesian inference, bundled design/measurements, guides and tests |
 | `tools/`, `tests/`, `osg/tests/` | Repository/data checks, documentation generator and workflow tests |
 
 Model build directories, downloaded `physics-data/` and prepared `dist/` archives are ignored by Git. Large EOS and iS3D coefficient datasets are supplied as a versioned release; `tools/package_physics_data.py` prepares it and `tools/download_physics_data.py` downloads/verifies it. See [setup](getting-started.md) for installation and [physics inputs](reference/physics.md) before changing model conventions.
@@ -87,6 +87,8 @@ For cache/analysis arithmetic, run `python models/analysis/check_cache_profiles.
 python3 tools/build_docs.py
 python3 tools/build_docs.py --check
 ```
+
+Inference owns its [CLI reference](../inference/CLI.md) and standalone generator, `inference/build_docs.py`. The repository generator delegates to it and keeps `docs/reference/cli-inference.md` as a pointer. From the inference folder alone, `python build_docs.py` and `python build_docs.py --check` maintain the same reference without repository-level tools.
 
 Review the generated diff. Add new tool families to `GROUPS` in the generator. `--check` reports stale/missing pages without writing files. Handwritten guides must explain resolved defaults, configuration precedence, action boundaries and scientific limits that source declarations alone cannot convey.
 

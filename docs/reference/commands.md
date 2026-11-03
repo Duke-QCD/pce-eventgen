@@ -13,7 +13,7 @@ The tables include positional arguments, aliases, parser defaults, choices, type
 | Campaign, runners, setup, initialization, shared configuration/status helpers, checks | [Generation index](cli-generation.md) |
 | Build, publish, survey/select, and reap caches | [Cache index](cli-cache.md) |
 | Extract, reduce, aggregate, inspect, validate, diagnostics | [Analysis index](cli-analysis.md) |
-| Independent Bayesian inference, recovery scans and posterior plots | [Inference index](cli-inference.md) |
+| Parameter-design generation/selection, Bayesian inference, recovery scans and posterior plots | [Inference index](cli-inference.md) |
 | Event migration, markers, stuck events, archive deletion | [Maintenance index](cli-maintenance.md) |
 | OSG stage, split, sweep, and both drain implementations | [OSG index](cli-osg.md) |
 | MUSIC input/surface/EOS helpers, TRENTo extraction, iS3D scripts/converter | [Model-helper index](cli-model-tools.md) |
